@@ -1,0 +1,32 @@
+# VCS and editor metadata
+.git
+.gitignore
+.vscode
+.idea
+
+# Local/runtime artifacts
+**/node_modules
+**/dist
+**/.turbo
+**/.cache
+**/*.log
+
+# Environment and local overrides
+.env
+.env.*
+!.env.example
+
+# Defensive: no cert/key files exist in-repo today, but nothing should
+# stop one from being baked into an image if ever added ad hoc
+*.pem
+*.key
+*.crt
+
+# Dev-only docs and notes
+*.md
+
+# Dev utilities not needed for production images
+tools/
+
+# Optional local test artifacts
+coverage/

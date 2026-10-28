@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Video Stream Quality Report</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 20px; background: #0f1115; color: #e6e8ee;
+         font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+  h1 { font-size: 24px; margin: 0; }
+  h2 { font-size: 18px; margin: 0; }
+  .muted { color: #8b90a0; font-size: 13px; margin: 6px 0 16px; }
+  .badge { padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .card { background: #171a21; border: 1px solid #262b36; border-radius: 14px;
+          padding: 22px; margin: 18px 0; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin-top: 6px; }
+  .metric { background: #1d212b; border: 1px solid #2a3040; border-left-width: 4px; border-radius: 10px; padding: 10px 12px; }
+  .metric.good { border-left-color: #1db954; }
+  .metric.warn { border-left-color: #e8a33d; }
+  .metric.bad  { border-left-color: #e5484d; }
+  .metric-label { font-size: 12px; color: #8b90a0; margin-bottom: 3px; }
+  .metric-value { font-size: 15px; font-weight: 600; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 18px; }
+  figure { margin: 0; background: #1d212b; border: 1px solid #2a3040; border-radius: 10px; padding: 12px; }
+  figcaption { font-size: 13px; color: #aab0c0; margin-bottom: 6px; }
+  svg { width: 100%; height: auto; display: block; }
+  .grid { stroke: #2a3040; stroke-width: 1; }
+  .axis { fill: #6b7183; font-size: 10px; text-anchor: end; }
+  .legend { fill: #aab0c0; font-size: 11px; }
+  .nochart { color: #8b90a0; font-size: 13px; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #262b36; white-space: nowrap; }
+  th { color: #8b90a0; font-weight: 600; }
+  td.good { color: #1db954; } td.warn { color: #e8a33d; } td.bad { color: #e5484d; }
+  footer { color: #6b7183; font-size: 12px; margin-top: 24px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📹 Video Stream Quality Report</h1>
+    <span class="badge" style="background:#e5484d1f;color:#e5484d;border:1px solid #e5484d55">✖ POOR — overall</span>
+  </header>
+  <p class="muted">WebRTC streams measured via <code>getStats()</code> · generated 21/10/2026, 3:27:07 pm · 3 stream(s)</p>
+  
+  <section class="card">
+    <h2>Side-by-side comparison</h2>
+    <div class="table-wrap"><table>
+      <tr><th>Metric</th><th>vehicle1</th><th>vehicle3</th><th>vehicle2</th></tr>
+      <tr>
+        <td>Startup time</td>
+        <td class="warn">8.7 s</td><td class="bad">10.2 s</td><td class="bad">15.0 s</td>
+      </tr><tr>
+        <td>Resolution</td>
+        <td class="good">1280×720</td><td class="good">1280×720</td><td class="good">1280×720</td>
+      </tr><tr>
+        <td>Bitrate (avg / min / max)</td>
+        <td class="good">6.88 / 0.01 / 13.21 Mbps</td><td class="warn">0.34 / 0.03 / 0.53 Mbps</td><td class="warn">0.35 / 0.20 / 0.58 Mbps</td>
+      </tr><tr>
+        <td>Latency (RTT avg)</td>
+        <td class="warn">51.3 ms</td><td class="warn">52.8 ms</td><td class="bad">185.0 ms</td>
+      </tr><tr>
+        <td>Jitter (avg)</td>
+        <td class="warn">18.7 ms</td><td class="warn">20.1 ms</td><td class="good">14.2 ms</td>
+      </tr><tr>
+        <td>Frame rate (avg)</td>
+        <td class="warn">22.1 fps</td><td class="good">35.0 fps</td><td class="good">34.4 fps</td>
+      </tr><tr>
+        <td>Frames dropped</td>
+        <td class="bad">119 of 1788</td><td class="good">0 of 2093</td><td class="warn">7 of 2049</td>
+      </tr><tr>
+        <td>Freezes / stutters</td>
+        <td class="bad">16 freezes, 21.7 s (31.8% of stream)</td><td class="warn">7 freezes, 5.2 s (7.6% of stream)</td><td class="bad">20 freezes, 6.9 s (10.8% of stream)</td>
+      </tr><tr>
+        <td>Packet loss</td>
+        <td class="good">0.000%</td><td class="good">0.000%</td><td class="good">0.000%</td>
+      </tr>
+    </table></div>
+  </section>
+  
+  <section class="card">
+    <div class="card-head">
+      <h2>vehicle1</h2>
+      <span class="badge" style="background:#e5484d1f;color:#e5484d;border:1px solid #e5484d55">✖ POOR</span>
+    </div>
+    <p class="muted">http://127.0.0.1:8889/vehicle1 · measured 68 s ·
+      21/10/2026, 3:14:55 pm</p>
+    <div class="metrics">
+      
+        <div class="metric warn">
+          <div class="metric-label">Startup time</div>
+          <div class="metric-value">8.7 s</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Resolution</div>
+          <div class="metric-value">1280×720</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Bitrate (avg / min / max)</div>
+          <div class="metric-value">6.88 / 0.01 / 13.21 Mbps</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Latency (RTT avg)</div>
+          <div class="metric-value">51.3 ms</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Jitter (avg)</div>
+          <div class="metric-value">18.7 ms</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Frame rate (avg)</div>
+          <div class="metric-value">22.1 fps</div>
+        </div>
+        <div class="metric bad">
+          <div class="metric-label">Frames dropped</div>
+          <div class="metric-value">119 of 1788</div>
+        </div>
+        <div class="metric bad">
+          <div class="metric-label">Freezes / stutters</div>
+          <div class="metric-value">16 freezes, 21.7 s (31.8% of stream)</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Packet loss</div>
+          <div class="metric-value">0.000%</div>
+        </div>
+    </div>
+    <div class="charts">
+      <figure><figcaption>Bitrate over time</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">14.5</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">7.3</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,100.4 52.1,74.0 62.3,125.4 72.4,127.4 82.6,94.4 92.7,114.9 102.8,97.6 113.0,74.1 123.1,127.9 133.2,85.4 143.4,74.3 153.5,83.1 163.7,77.7 173.8,46.7 183.9,113.4 194.1,28.9 204.2,65.3 214.3,64.9 224.5,63.2 234.6,65.9 244.8,64.6 254.9,66.4 265.0,63.4 275.2,65.6 285.3,63.9 295.4,73.6 305.6,59.0 315.7,64.9 325.9,63.0 336.0,77.4 346.1,54.3 356.3,65.3 366.4,66.0 376.6,65.5 386.7,65.7 396.8,64.3 407.0,63.7 417.1,65.8 427.2,65.2 437.4,63.6 447.5,65.8 457.7,65.4 467.8,65.1 477.9,64.1 488.1,65.2 498.2,65.9 508.3,64.9 518.5,64.2 528.6,65.9 538.8,66.4 548.9,87.1 559.0,107.3 569.2,104.3 579.3,22.5 589.4,61.3 599.6,70.2 609.7,80.3 619.9,69.9 630.0,47.3" fill="none" stroke="#4f9cf9" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#4f9cf9" rx="2"/>
+     <text x="56" y="145" class="legend">bitrate (Mbps)</text></svg></figure><figure><figcaption>Latency & jitter over time</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">810.7</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">405.4</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,107.7 52.1,123.3 62.3,123.3 72.4,50.3 82.6,22.5 92.7,104.2 102.8,104.2 113.0,127.3 123.1,127.3 133.2,113.4 143.4,113.4 153.5,123.3 163.7,123.3 173.8,90.8 183.9,89.9 194.1,89.9 204.2,127.9 214.3,127.9 224.5,127.9 234.6,127.9 244.8,127.9 254.9,127.9 265.0,127.9 275.2,127.9 285.3,127.9 295.4,127.9 305.6,127.9 315.7,127.9 325.9,127.9 336.0,127.9 346.1,127.9 356.3,127.9 366.4,127.7 376.6,127.7 386.7,127.7 396.8,127.9 407.0,127.9 417.1,127.9 427.2,127.9 437.4,127.9 447.5,127.9 457.7,127.9 467.8,127.9 477.9,127.9 488.1,127.9 498.2,127.9 508.3,127.9 518.5,127.9 528.6,127.9 538.8,127.9 548.9,127.9 559.0,124.6 569.2,124.6 579.3,127.4 589.4,127.4 599.6,126.7 609.7,126.7 619.9,126.6 630.0,126.6" fill="none" stroke="#e5484d" stroke-width="1.6"/><polyline points="42.0,124.1 52.1,121.6 62.3,122.0 72.4,122.1 82.6,122.8 92.7,119.4 102.8,122.4 113.0,123.6 123.1,123.6 133.2,118.1 143.4,120.0 153.5,120.7 163.7,122.7 173.8,123.9 183.9,123.7 194.1,123.6 204.2,127.0 214.3,127.1 224.5,127.3 234.6,127.3 244.8,127.1 254.9,127.4 265.0,126.9 275.2,127.1 285.3,127.1 295.4,126.6 305.6,124.7 315.7,126.6 325.9,127.1 336.0,127.4 346.1,126.6 356.3,126.9 366.4,127.3 376.6,127.1 386.7,125.3 396.8,126.9 407.0,127.0 417.1,127.1 427.2,127.6 437.4,127.1 447.5,127.0 457.7,127.0 467.8,127.3 477.9,127.0 488.1,127.3 498.2,127.4 508.3,127.3 518.5,127.4 528.6,127.3 538.8,127.0 548.9,126.0 559.0,123.9 569.2,123.6 579.3,124.1 589.4,126.1 599.6,125.9 609.7,125.3 619.9,123.7 630.0,123.7" fill="none" stroke="#e8a33d" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#e5484d" rx="2"/>
+     <text x="56" y="145" class="legend">RTT (ms)</text><rect x="182" y="136" width="10" height="10" fill="#e8a33d" rx="2"/>
+     <text x="196" y="145" class="legend">jitter (ms)</text></svg></figure><figure><figcaption>Decoded frames per second</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">63.8</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">31.9</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,88.0 52.1,75.3 62.3,111.6 72.4,126.2 82.6,88.0 92.7,104.4 102.8,95.3 113.0,88.0 123.1,102.5 133.2,84.4 143.4,128.0 153.5,126.2 163.7,128.0 173.8,128.0 183.9,117.1 194.1,128.0 204.2,128.0 214.3,128.0 224.5,98.9 234.6,80.7 244.8,82.5 254.9,71.6 265.0,82.5 275.2,80.7 285.3,80.7 295.4,75.3 305.6,22.5 315.7,77.1 325.9,80.7 336.0,82.5 346.1,77.1 356.3,26.2 366.4,80.7 376.6,80.7 386.7,78.9 396.8,80.7 407.0,26.2 417.1,80.7 427.2,80.7 437.4,78.9 447.5,80.7 457.7,28.0 467.8,78.9 477.9,80.7 488.1,80.7 498.2,78.9 508.3,28.0 518.5,78.9 528.6,80.7 538.8,78.9 548.9,77.1 559.0,71.6 569.2,100.7 579.3,109.8 589.4,126.2 599.6,128.0 609.7,128.0 619.9,104.4 630.0,64.4" fill="none" stroke="#1db954" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#1db954" rx="2"/>
+     <text x="56" y="145" class="legend">fps (fps)</text></svg></figure>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>vehicle3</h2>
+      <span class="badge" style="background:#e5484d1f;color:#e5484d;border:1px solid #e5484d55">✖ POOR</span>
+    </div>
+    <p class="muted">http://127.0.0.1:8889/vehicle3 · measured 69 s ·
+      21/10/2026, 3:14:57 pm</p>
+    <div class="metrics">
+      
+        <div class="metric bad">
+          <div class="metric-label">Startup time</div>
+          <div class="metric-value">10.2 s</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Resolution</div>
+          <div class="metric-value">1280×720</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Bitrate (avg / min / max)</div>
+          <div class="metric-value">0.34 / 0.03 / 0.53 Mbps</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Latency (RTT avg)</div>
+          <div class="metric-value">52.8 ms</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Jitter (avg)</div>
+          <div class="metric-value">20.1 ms</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Frame rate (avg)</div>
+          <div class="metric-value">35.0 fps</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Frames dropped</div>
+          <div class="metric-value">0 of 2093</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Freezes / stutters</div>
+          <div class="metric-value">7 freezes, 5.2 s (7.6% of stream)</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Packet loss</div>
+          <div class="metric-value">0.000%</div>
+        </div>
+    </div>
+    <div class="charts">
+      <figure><figcaption>Bitrate over time</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">0.6</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">0.3</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,49.8 52.1,60.8 62.3,121.7 72.4,90.3 82.6,34.7 92.7,74.3 102.8,49.8 113.0,47.2 123.1,60.0 133.2,63.9 143.4,65.1 153.5,65.5 163.7,69.8 173.8,22.5 183.9,61.5 194.1,63.3 204.2,63.0 214.3,63.6 224.5,64.5 234.6,61.5 244.8,34.3 254.9,64.8 265.0,60.6 275.2,68.7 285.3,57.6 295.4,62.8 305.6,61.9 315.7,62.7 325.9,36.0 336.0,64.3 346.1,61.1 356.3,65.2 366.4,64.0 376.6,61.9 386.7,65.3 396.8,62.6 407.0,35.2 417.1,64.1 427.2,63.2 437.4,62.9 447.5,64.3 457.7,61.9 467.8,64.0 477.9,62.5 488.1,30.9 498.2,64.3 508.3,63.6 518.5,62.4 528.6,67.5 538.8,71.2 548.9,55.9 559.0,34.1 569.2,33.0 579.3,66.4 589.4,68.6 599.6,58.7 609.7,62.0 619.9,82.3 630.0,47.1" fill="none" stroke="#4f9cf9" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#4f9cf9" rx="2"/>
+     <text x="56" y="145" class="legend">bitrate (Mbps)</text></svg></figure><figure><figcaption>Latency & jitter over time</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">1577.4</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">788.7</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,122.9 52.1,120.5 72.4,22.5 82.6,119.0 92.7,119.0 102.8,120.1 113.0,120.1 123.1,120.1 133.2,127.6 143.4,127.6 153.5,122.3 163.7,122.3 173.8,122.3 183.9,127.9 194.1,127.9 204.2,127.9 214.3,127.9 224.5,127.9 234.6,127.9 244.8,127.9 254.9,127.9 265.0,127.9 275.2,127.9 285.3,124.4 295.4,124.4 305.6,127.9 315.7,127.9 325.9,127.9 336.0,127.9 346.1,127.9 356.3,127.9 366.4,127.9 376.6,127.9 386.7,127.9 396.8,127.9 407.0,127.9 417.1,127.9 427.2,127.9 437.4,127.9 447.5,127.9 457.7,127.9 467.8,127.9 477.9,127.9 488.1,127.9 498.2,127.9 508.3,127.9 518.5,127.9 528.6,127.9 538.8,127.9 548.9,117.7 559.0,117.7 569.2,127.7 579.3,127.7 589.4,127.6 599.6,127.6 609.7,127.6 619.9,120.2 630.0,120.2" fill="none" stroke="#e5484d" stroke-width="1.6"/><polyline points="42.0,125.1 52.1,124.9 62.3,116.5 72.4,123.6 82.6,125.0 92.7,125.6 102.8,125.6 113.0,125.5 123.1,125.6 133.2,125.4 143.4,125.1 153.5,125.1 163.7,124.8 173.8,127.3 183.9,127.7 194.1,127.6 204.2,127.6 214.3,127.6 224.5,127.8 234.6,127.6 244.8,127.7 254.9,127.7 265.0,127.6 275.2,126.8 285.3,125.8 295.4,127.4 305.6,127.7 315.7,127.6 325.9,127.6 336.0,127.7 346.1,127.4 356.3,127.3 366.4,127.7 376.6,127.7 386.7,127.6 396.8,127.6 407.0,127.4 417.1,127.4 427.2,127.6 437.4,127.6 447.5,127.6 457.7,127.6 467.8,127.6 477.9,127.7 488.1,127.6 498.2,127.6 508.3,127.6 518.5,127.4 528.6,126.4 538.8,125.4 548.9,125.1 559.0,126.3 569.2,127.1 579.3,126.8 589.4,125.6 599.6,125.8 609.7,126.5 619.9,124.6 630.0,124.8" fill="none" stroke="#e8a33d" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#e5484d" rx="2"/>
+     <text x="56" y="145" class="legend">RTT (ms)</text><rect x="182" y="136" width="10" height="10" fill="#e8a33d" rx="2"/>
+     <text x="196" y="145" class="legend">jitter (ms)</text></svg></figure><figure><figcaption>Decoded frames per second</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">121.0</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">60.5</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,64.7 52.1,78.1 62.3,120.3 72.4,89.7 82.6,91.6 92.7,98.3 102.8,90.6 113.0,106.9 123.1,106.9 133.2,104.0 143.4,22.5 153.5,101.2 163.7,97.3 173.8,106.0 183.9,107.9 194.1,108.8 204.2,107.9 214.3,35.0 224.5,102.1 234.6,103.1 244.8,102.1 254.9,103.1 265.0,107.9 275.2,106.9 285.3,106.0 295.4,107.9 305.6,33.1 315.7,103.1 325.9,102.1 336.0,102.1 346.1,81.0 356.3,103.1 366.4,102.1 376.6,102.1 386.7,101.2 396.8,105.0 407.0,106.9 417.1,106.9 427.2,106.9 437.4,106.9 447.5,33.1 457.7,102.1 467.8,102.1 477.9,101.2 488.1,102.1 498.2,77.2 508.3,103.1 518.5,101.2 528.6,101.2 538.8,94.4 548.9,92.5 559.0,104.0 569.2,105.0 579.3,105.0 589.4,98.3 599.6,30.2 609.7,90.6 619.9,98.3 630.0,92.5" fill="none" stroke="#1db954" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#1db954" rx="2"/>
+     <text x="56" y="145" class="legend">fps (fps)</text></svg></figure>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>vehicle2</h2>
+      <span class="badge" style="background:#e5484d1f;color:#e5484d;border:1px solid #e5484d55">✖ POOR</span>
+    </div>
+    <p class="muted">http://127.0.0.1:8889/vehicle2 · measured 64 s ·
+      21/10/2026, 3:15:09 pm</p>
+    <div class="metrics">
+      
+        <div class="metric bad">
+          <div class="metric-label">Startup time</div>
+          <div class="metric-value">15.0 s</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Resolution</div>
+          <div class="metric-value">1280×720</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Bitrate (avg / min / max)</div>
+          <div class="metric-value">0.35 / 0.20 / 0.58 Mbps</div>
+        </div>
+        <div class="metric bad">
+          <div class="metric-label">Latency (RTT avg)</div>
+          <div class="metric-value">185.0 ms</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Jitter (avg)</div>
+          <div class="metric-value">14.2 ms</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Frame rate (avg)</div>
+          <div class="metric-value">34.4 fps</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">Frames dropped</div>
+          <div class="metric-value">7 of 2049</div>
+        </div>
+        <div class="metric bad">
+          <div class="metric-label">Freezes / stutters</div>
+          <div class="metric-value">20 freezes, 6.9 s (10.8% of stream)</div>
+        </div>
+        <div class="metric good">
+          <div class="metric-label">Packet loss</div>
+          <div class="metric-value">0.000%</div>
+        </div>
+    </div>
+    <div class="charts">
+      <figure><figcaption>Bitrate over time</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">0.6</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">0.3</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,65.2 52.1,65.2 62.3,68.9 72.4,70.1 82.6,84.8 92.7,31.5 102.8,63.7 113.0,69.9 123.1,69.4 133.2,67.2 143.4,70.1 153.5,66.5 163.7,67.7 173.8,42.4 183.9,68.1 194.1,68.9 204.2,69.7 214.3,70.7 224.5,64.4 234.6,68.5 244.8,70.4 254.9,44.5 265.0,67.0 275.2,69.0 285.3,69.9 295.4,66.1 305.6,69.0 315.7,70.3 325.9,40.2 336.0,69.9 346.1,69.3 356.3,68.5 366.4,70.4 376.6,69.6 386.7,67.1 396.8,68.3 407.0,41.1 417.1,67.5 427.2,71.0 437.4,67.7 447.5,68.6 457.7,79.9 467.8,63.5 477.9,49.4 488.1,62.9 498.2,45.8 508.3,66.1 518.5,68.5 528.6,66.0 538.8,63.5 548.9,91.5 559.0,22.5 569.2,70.1 579.3,61.2 589.4,69.0 599.6,69.0 609.7,68.2 619.9,69.8 630.0,69.0" fill="none" stroke="#4f9cf9" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#4f9cf9" rx="2"/>
+     <text x="56" y="145" class="legend">bitrate (Mbps)</text></svg></figure><figure><figcaption>Latency & jitter over time</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">203.5</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">101.8</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,22.5 52.1,22.5 62.3,22.5 72.4,22.5 82.6,22.5 92.7,22.5 102.8,22.5 113.0,22.5 123.1,22.5 133.2,22.5 143.4,22.5 153.5,22.5 163.7,22.5 173.8,22.5 183.9,22.5 194.1,22.5 204.2,22.5 214.3,22.5 224.5,22.5 234.6,22.5 244.8,22.5 254.9,22.5 265.0,22.5 275.2,22.5 285.3,22.5 295.4,22.5 305.6,22.5 315.7,22.5 325.9,22.5 336.0,22.5 346.1,22.5 356.3,22.5 366.4,22.5 376.6,22.5 386.7,22.5 396.8,22.5 407.0,22.5 417.1,22.5 427.2,22.5 437.4,22.5 447.5,22.5 457.7,22.5 467.8,22.5 477.9,22.5 488.1,22.5 498.2,22.5 508.3,22.5 518.5,22.5 528.6,22.5 538.8,22.5 548.9,22.5 559.0,22.5 569.2,22.5 579.3,22.5 589.4,22.5 599.6,22.5 609.7,22.5 619.9,22.5 630.0,22.5" fill="none" stroke="#e5484d" stroke-width="1.6"/><polyline points="42.0,106.9 52.1,105.2 62.3,110.3 72.4,110.9 82.6,112.6 92.7,105.8 102.8,118.9 113.0,124.0 123.1,125.1 133.2,124.0 143.4,125.7 153.5,125.1 163.7,125.7 173.8,124.6 183.9,125.1 194.1,125.1 204.2,125.1 214.3,112.6 224.5,122.9 234.6,122.9 244.8,125.1 254.9,125.7 265.0,126.3 275.2,124.6 285.3,125.7 295.4,125.1 305.6,124.6 315.7,126.3 325.9,124.0 336.0,124.0 346.1,124.0 356.3,124.0 366.4,124.0 376.6,125.1 386.7,125.7 396.8,124.6 407.0,124.6 417.1,125.1 427.2,125.7 437.4,125.1 447.5,124.6 457.7,120.0 467.8,106.9 477.9,108.0 488.1,114.9 498.2,122.3 508.3,120.0 518.5,112.6 528.6,107.5 538.8,112.6 548.9,102.3 559.0,104.6 569.2,104.6 579.3,116.0 589.4,122.9 599.6,124.0 609.7,123.4 619.9,124.6 630.0,124.6" fill="none" stroke="#e8a33d" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#e5484d" rx="2"/>
+     <text x="56" y="145" class="legend">RTT (ms)</text><rect x="182" y="136" width="10" height="10" fill="#e8a33d" rx="2"/>
+     <text x="196" y="145" class="legend">jitter (ms)</text></svg></figure><figure><figcaption>Decoded frames per second</figcaption><svg viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet" role="img"><line x1="42" y1="12" x2="630" y2="12" class="grid"/>
+            <text x="37" y="16" class="axis">57.2</text><line x1="42" y1="70" x2="630" y2="70" class="grid"/>
+            <text x="37" y="74" class="axis">28.6</text><line x1="42" y1="128" x2="630" y2="128" class="grid"/>
+            <text x="37" y="132" class="axis">0.0</text><polyline points="42.0,67.2 52.1,22.5 62.3,42.8 72.4,40.8 82.6,73.2 92.7,46.9 102.8,53.0 113.0,59.0 123.1,61.1 133.2,61.1 143.4,63.1 153.5,61.1 163.7,63.1 173.8,63.1 183.9,63.1 194.1,63.1 204.2,65.1 214.3,61.1 224.5,48.9 234.6,61.1 244.8,63.1 254.9,63.1 265.0,61.1 275.2,65.1 285.3,63.1 295.4,61.1 305.6,63.1 315.7,63.1 325.9,65.1 336.0,63.1 346.1,61.1 356.3,63.1 366.4,63.1 376.6,63.1 386.7,63.1 396.8,63.1 407.0,63.1 417.1,63.1 427.2,63.1 437.4,63.1 447.5,63.1 457.7,67.2 467.8,44.9 477.9,22.5 488.1,59.0 498.2,59.0 508.3,59.0 518.5,48.9 528.6,44.9 538.8,57.0 548.9,69.2 559.0,22.5 569.2,55.0 579.3,57.0 589.4,61.1 599.6,61.1 609.7,61.1 619.9,61.1 630.0,63.1" fill="none" stroke="#1db954" stroke-width="1.6"/><rect x="42" y="136" width="10" height="10" fill="#1db954" rx="2"/>
+     <text x="56" y="145" class="legend">fps (fps)</text></svg></figure>
+    </div>
+  </section>
+  <footer>Generated by generate-report.mjs from Playwright WebRTC quality test results.</footer>
+</div>
+</body>
+</html>

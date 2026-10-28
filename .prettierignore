@@ -1,0 +1,8 @@
+dist/
+node_modules/
+package-lock.json
+docker/mosquitto/*.conf
+
+# Pre-existing planning docs — not part of the code-style domain
+CLAUDE.md
+AV_Test_App_Tech_Stack_Architecture_Recommendations.md

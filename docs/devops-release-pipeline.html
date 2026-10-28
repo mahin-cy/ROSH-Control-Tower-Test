@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RoshAI Release Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@85,600;85,700;100,500&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky table of contents on the left, one reading column on the right; stacks to a single column on phones. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --ink: #161b26;
+  --muted: #5a6273;
+  --line: #dde1e8;
+  --accent: #2a49c9;
+  --accent-soft: #e6ebfb;
+  --dev: #a35d00;
+  --dev-soft: #fbefdc;
+  --prod: #b3263a;
+  --prod-soft: #fae3e6;
+  --ok: #1d7a4c;
+  --ok-soft: #dff2e8;
+  --code-bg: #eef0f5;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11141b; --surface: #181c26; --ink: #e6e9f0; --muted: #9aa2b4; --line: #2a3040;
+    --accent: #8ea4ff; --accent-soft: #1e2645;
+    --dev: #f0b45c; --dev-soft: #3a2a12; --prod: #ff8a99; --prod-soft: #3d1a20;
+    --ok: #6fd3a0; --ok-soft: #133224; --code-bg: #0c0f15;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11141b; --surface: #181c26; --ink: #e6e9f0; --muted: #9aa2b4; --line: #2a3040;
+  --accent: #8ea4ff; --accent-soft: #1e2645;
+  --dev: #f0b45c; --dev-soft: #3a2a12; --prod: #ff8a99; --prod-soft: #3d1a20;
+  --ok: #6fd3a0; --ok-soft: #133224; --code-bg: #0c0f15;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.shell { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+@media (max-width: 860px) { .shell { grid-template-columns: minmax(0, 1fr); gap: 0; } nav.toc { display: none; } }
+
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; padding-top: 40px; font-size: 14px; }
+nav.toc p { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.toc a { display: block; padding: 4px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--ink); background: var(--accent-soft); outline: none; }
+
+main { min-width: 0; padding-top: 40px; }
+header.top { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 8px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--muted); letter-spacing: .02em; margin: 0 0 12px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 700; font-stretch: 85%; letter-spacing: -.01em; }
+h2 { font-size: 26px; font-weight: 700; font-stretch: 85%; margin-bottom: 14px; }
+h3 { font-size: 17px; font-weight: 600; font-stretch: 85%; margin: 26px 0 8px; }
+.lede { font-size: 18px; color: var(--muted); max-width: 64ch; margin: 14px 0 0; }
+section { padding-block: 40px 8px; scroll-margin-top: 16px; }
+section p, section li { max-width: 68ch; }
+p { margin: 0 0 12px; }
+a { color: var(--accent); }
+code { font-family: var(--font-mono); font-size: .86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+strong { font-weight: 600; }
+
+/* Decision chips */
+.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 20px; }
+.decision { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.decision dt { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.decision dd { margin: 4px 0 0; font-weight: 600; }
+.decision dd span { display: block; font-weight: 400; font-size: 14px; color: var(--muted); margin-top: 2px; }
+
+/* Pipeline flow */
+.flow { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; overflow-x: auto; }
+.lane { display: grid; grid-template-columns: 150px repeat(5, minmax(120px, 1fr)); gap: 10px; align-items: stretch; min-width: 860px; }
+.lane + .lane { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.trigger { font-family: var(--font-mono); font-size: 12px; color: var(--muted); align-self: center; }
+.trigger b { display: block; color: var(--ink); font-size: 13px; }
+.step { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 13px; line-height: 1.35; background: var(--bg); }
+.step small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+.step:not(:last-child)::after { content: "→"; position: absolute; right: -9px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; }
+.step.gh { border-color: var(--accent); background: var(--accent-soft); }
+.step.dev { border-color: var(--dev); background: var(--dev-soft); }
+.step.prod { border-color: var(--prod); background: var(--prod-soft); }
+.step.gate { border-style: dashed; border-color: var(--prod); background: transparent; }
+.step.empty { border: none; background: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid; }
+
+/* Environments */
+.envs { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.env { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.env h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+.pill { font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .05em; }
+.pill.dev { color: var(--dev); background: var(--dev-soft); }
+.pill.prod { color: var(--prod); background: var(--prod-soft); }
+.pill.ok { color: var(--ok); background: var(--ok-soft); }
+.env dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 12px 0 0; font-size: 14px; }
+.env dt { color: var(--muted); }
+.env dd { margin: 0; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 620px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; font-stretch: 85%; font-size: 13px; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+td code { white-space: nowrap; }
+
+/* Ordered procedures */
+ol.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; max-width: none; }
+ol.steps > li::before { content: counter(s); font-family: var(--font-mono); font-size: 13px; font-weight: 600; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+ol.steps > li > div { min-width: 0; }
+ol.steps > li p:last-child { margin-bottom: 0; }
+
+/* Code */
+.code { position: relative; margin: 10px 0 14px; }
+.code pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; tab-size: 2; }
+.code .label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
+.copy { position: absolute; top: 24px; right: 8px; font: 600 11px var(--font-mono); padding: 4px 8px; border-radius: 5px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+.copy:hover, .copy:focus-visible { color: var(--ink); border-color: var(--accent); outline: none; }
+
+/* Phases */
+.phases { display: grid; gap: 0; border-left: 2px solid var(--line); margin-left: 6px; }
+.phase { position: relative; padding: 0 0 22px 22px; }
+.phase::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+.phase h3 { margin-top: 0; }
+.phase ul { margin: 6px 0 0; padding-left: 18px; }
+
+.callout { border: 1px solid var(--line); border-left: 3px solid var(--prod); background: var(--surface); padding: 12px 16px; border-radius: 6px; margin: 14px 0; font-size: 15px; max-width: 68ch; }
+.callout.info { border-left-color: var(--accent); }
+ul.checks { list-style: none; padding: 0; display: grid; gap: 8px; }
+ul.checks li { padding-left: 26px; position: relative; }
+ul.checks li::before { content: "✓"; position: absolute; left: 4px; color: var(--ok); font-weight: 600; }
+footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#strategy">Strategy</a></li>
+      <li><a href="#flow">Pipeline flow</a></li>
+      <li><a href="#environments">Environments</a></li>
+      <li><a href="#files">What we add to the repo</a></li>
+      <li><a href="#deploy">What a deploy does</a></li>
+      <li><a href="#setup">One-time setup</a></li>
+      <li><a href="#daily">Day-to-day use</a></li>
+      <li><a href="#rollout">Rollout plan</a></li>
+      <li><a href="#verify">Verification</a></li>
+      <li><a href="#open">Open items</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="top">
+      <p class="eyebrow">roshai-control-tower · DevOps strategy · Oct 2026</p>
+      <h1>RoshAI Release Pipeline</h1>
+      <p class="lede">How code moves from a feature branch to the dev VM and then to production. Every change is checked, built once, run on dev, and promoted to prod by a tagged, approved release. No one has to SSH into a server to deploy.</p>
+    </header>
+
+    <section id="strategy">
+      <h2>Strategy</h2>
+      <p><strong>Today</strong> the cloud prod VM is deployed by hand. Someone SSHes in, pulls the repo, edits <code>docker/.env</code>, builds images on the VM with <code>docker compose up --build</code>, and then builds a separate image just to run migrations. There's no CI, no image registry, no record of what is deployed, and no quick way back to the previous version.</p>
+      <p><strong>What's changing.</strong> Dev is moving to an organization VM that may be in the cloud or on-prem behind a corporate firewall. The pipeline has to work the same on both. That rules out anything that needs inbound access to the server.</p>
+      <dl class="decisions">
+        <div class="decision"><dt>Platform</dt><dd>GitHub Actions<span>In Rosh-Ai-Private-Limited / roshai-autopdi-control-tower</span></dd></div>
+        <div class="decision"><dt>Registry</dt><dd>GitHub Container Registry<span>Private images, tagged by commit and by version</span></dd></div>
+        <div class="decision"><dt>How we reach the VMs</dt><dd>Self-hosted runner on each VM<span>Outbound HTTPS only. No open ports, no SSH, no tailnet keys in GitHub</span></dd></div>
+        <div class="decision"><dt>Prod trigger</dt><dd>Version tag + approval<span>Push <code>vX.Y.Z</code> on main, then a reviewer approves</span></dd></div>
+        <div class="decision"><dt>Runtime secrets</dt><dd>GitHub Environment secrets<span>One <code>DOTENV</code> secret per environment, written to the VM at deploy time</span></dd></div>
+        <div class="decision"><dt>Database changes</dt><dd>Prisma migrate on every deploy<span>Prod takes a <code>pg_dump</code> first</span></dd></div>
+      </dl>
+
+      <h3>Principles behind the design</h3>
+      <ul>
+        <li><strong>Build once, promote the same image.</strong> The frontend calls the API with relative paths and the backend reads all config from env vars, so one image works in both environments. Prod runs the exact bytes that were tested on dev.</li>
+        <li><strong>VMs only pull and run.</strong> Builds run on GitHub's machines. The VMs never compile anything, so they stay small and predictable.</li>
+        <li><strong>Untrusted code never reaches a server.</strong> Pull requests and CI run on GitHub-hosted runners. The self-hosted runners on our VMs pick up only deploy jobs, and only through a protected environment.</li>
+        <li><strong>Every deploy can be undone.</strong> Each release is an immutable image tag, so rolling back means redeploying an earlier tag.</li>
+        <li><strong>Nothing about Tailscale changes.</strong> The app stays reachable only over the tailnet. The runner talks to GitHub, not to the tailnet.</li>
+      </ul>
+
+      <h3>Why not the alternatives</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Option</th><th>Why we didn't pick it</th></tr></thead>
+          <tbody>
+            <tr><td>GitHub runner joins the tailnet and SSHes in</td><td>Works, but it needs SSH open on every VM and a Tailscale OAuth key stored in GitHub, and it breaks if the org VM's network blocks it. The self-hosted runner needs neither.</td></tr>
+            <tr><td>Watchtower or another auto-pull agent</td><td>It can't run migrations, take a backup first or wait for approval, and it gives no visible pass/fail record.</td></tr>
+            <tr><td>Kubernetes with Argo CD</td><td>Far more to operate than a single-VM Docker Compose stack needs. Revisit if the fleet outgrows one host.</td></tr>
+            <tr><td>Keep deploying by hand</td><td>Not repeatable, has no audit trail, and can't promote a tested build.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="flow">
+      <h2>Pipeline flow</h2>
+      <p>Three things start the pipeline. Each row below shows what happens, left to right.</p>
+      <div class="flow" role="img" aria-label="Pipeline flow: pull requests run CI only; pushes to development build images and deploy to dev; version tags build, deploy to dev, wait for approval, then deploy the same image to prod.">
+        <div class="lane">
+          <div class="trigger"><b>Pull request</b>any branch</div>
+          <div class="step gh">Install<small>npm ci</small></div>
+          <div class="step gh">Check<small>lint · format · typecheck</small></div>
+          <div class="step gh">Build<small>shared → backend → frontend</small></div>
+          <div class="step gh">Docker build<small>both images, not pushed</small></div>
+          <div class="step empty"></div>
+        </div>
+        <div class="lane">
+          <div class="trigger"><b>Push</b>development</div>
+          <div class="step gh">CI checks<small>same as above</small></div>
+          <div class="step gh">Build &amp; push<small>ghcr :sha-&lt;commit&gt;</small></div>
+          <div class="step dev">Deploy dev<small>runner on org VM</small></div>
+          <div class="step dev">Health check<small>compose --wait + /health</small></div>
+          <div class="step empty"></div>
+        </div>
+        <div class="lane">
+          <div class="trigger"><b>Tag vX.Y.Z</b>on main</div>
+          <div class="step gh">Build &amp; push<small>:sha-&lt;commit&gt; + :vX.Y.Z</small></div>
+          <div class="step dev">Deploy dev<small>same image</small></div>
+          <div class="step gate">Approval<small>prod reviewers</small></div>
+          <div class="step prod">Backup + migrate<small>pg_dump, prisma migrate</small></div>
+          <div class="step prod">Deploy prod<small>same image digest</small></div>
+        </div>
+        <div class="legend">
+          <span><i style="border-color:var(--accent);background:var(--accent-soft)"></i>GitHub-hosted runner</span>
+          <span><i style="border-color:var(--dev);background:var(--dev-soft)"></i>Dev VM runner</span>
+          <span><i style="border-color:var(--prod);background:var(--prod-soft)"></i>Prod VM runner</span>
+          <span><i style="border-color:var(--prod);border-style:dashed"></i>Human approval</span>
+        </div>
+      </div>
+      <p style="margin-top:14px">This fits the branching model in CLAUDE.md: <code>feature/*</code> → <code>development</code> → <code>main</code>, with tags marking releases. Each environment allows only one deploy at a time.</p>
+    </section>
+
+    <section id="environments">
+      <h2>Environments</h2>
+      <div class="envs">
+        <div class="env">
+          <h3>Dev <span class="pill dev">auto-deploy</span></h3>
+          <dl>
+            <dt>Host</dt><dd>Organization VM (cloud or on-prem)</dd>
+            <dt>Runner label</dt><dd><code>roshai-dev</code></dd>
+            <dt>Deploys from</dt><dd>every push to <code>development</code>, and every release tag before prod</dd>
+            <dt>Tailnet name</dt><dd>its own dev hostname, never the prod name</dd>
+            <dt>Approval</dt><dd>none</dd>
+          </dl>
+        </div>
+        <div class="env">
+          <h3>Prod <span class="pill prod">approval</span></h3>
+          <dl>
+            <dt>Host</dt><dd>Existing Azure cloud VM</dd>
+            <dt>Runner label</dt><dd><code>roshai-prod</code></dd>
+            <dt>Deploys from</dt><dd><code>v*</code> tags only</dd>
+            <dt>Tailnet name</dt><dd><code>roshai-control-tower</code></dd>
+            <dt>Approval</dt><dd>required reviewers on the <code>prod</code> environment</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="callout info">Keep the dev and prod Tailscale hostnames distinct. We already hit the auto-suffix collision once, so reusing the prod name on dev would point bots and OIDC redirects at the wrong server.</div>
+    </section>
+
+    <section id="files">
+      <h2>What we add to the repo</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>.github/workflows/ci.yml</code></td><td>Runs on every PR and push: npm ci, lint, format check, typecheck, build, Docker build without pushing. Required to pass before merging to <code>development</code> or <code>main</code>.</td></tr>
+            <tr><td><code>.github/workflows/_build-images.yml</code></td><td>Reusable. Builds both images with layer caching and pushes them to GHCR.</td></tr>
+            <tr><td><code>.github/workflows/_deploy.yml</code></td><td>Reusable. Runs on the target VM's runner, writes <code>.env</code> from the environment secret, and calls the deploy script.</td></tr>
+            <tr><td><code>.github/workflows/deploy-dev.yml</code></td><td>On push to <code>development</code>: build, then deploy to dev. Can also be run by hand with an existing tag to redeploy or roll back.</td></tr>
+            <tr><td><code>.github/workflows/release.yml</code></td><td>On a <code>v*</code> tag: check the tag is on main, build, deploy to dev, wait for approval, deploy to prod. Can be run by hand with an older tag to roll back prod.</td></tr>
+            <tr><td><code>deploy/deploy.sh</code></td><td>Does the deploy on the VM. Kept as a plain script so it can also be run by hand when debugging.</td></tr>
+            <tr><td><code>docker/docker-compose.yml</code></td><td>Adds <code>image:</code> to backend and frontend, pins the floating third-party tags, and adds <code>restart: unless-stopped</code>.</td></tr>
+            <tr><td><code>docs/vm-runner-setup.md</code></td><td>Runner install steps, plus updates to CLAUDE.md and the cloud VM runbook.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Compose change</h3>
+      <p>Local dev still builds from source. On the VMs, compose pulls the tagged image instead.</p>
+      <div class="code"><span class="label">docker/docker-compose.yml (excerpt)</span><button class="copy" type="button">Copy</button><pre>backend:
+  image: ghcr.io/rosh-ai-private-limited/roshai-control-tower-backend:${IMAGE_TAG:-local}
+  build:
+    context: ..
+    dockerfile: docker/backend.Dockerfile
+  restart: unless-stopped
+
+frontend:
+  image: ghcr.io/rosh-ai-private-limited/roshai-control-tower-frontend:${IMAGE_TAG:-local}
+  build:
+    context: ..
+    dockerfile: docker/frontend.Dockerfile
+  restart: unless-stopped</pre></div>
+      <p>We also pin <code>bluenviron/mediamtx:latest-ffmpeg</code>, <code>tecnativa/docker-socket-proxy:latest</code> and <code>tailscale/tailscale:stable</code> to exact versions. Otherwise an upstream release could quietly change prod on the next deploy.</p>
+
+      <h3>Dev deploy workflow</h3>
+      <div class="code"><span class="label">.github/workflows/deploy-dev.yml</span><button class="copy" type="button">Copy</button><pre>name: deploy-dev
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+    inputs:
+      image_tag: { description: "Existing tag to redeploy", required: true }
+
+jobs:
+  build:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/_build-images.yml
+    permissions: { contents: read, packages: write }
+
+  deploy:
+    needs: build
+    if: always() &amp;&amp; (needs.build.result == 'success' || needs.build.result == 'skipped')
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: dev
+      image_tag: ${{ inputs.image_tag || format('sha-{0}', github.sha) }}</pre></div>
+
+      <h3>Release workflow (dev, then approval, then prod)</h3>
+      <div class="code"><span class="label">.github/workflows/release.yml (core)</span><button class="copy" type="button">Copy</button><pre>name: release
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Tag must be on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+  build:
+    needs: guard
+    uses: ./.github/workflows/_build-images.yml
+    permissions: { contents: read, packages: write }
+    with: { version_tag: "${{ github.ref_name }}" }
+
+  deploy-dev:
+    needs: build
+    uses: ./.github/workflows/_deploy.yml
+    with: { environment: dev, image_tag: "${{ github.ref_name }}" }
+
+  deploy-prod:
+    needs: deploy-dev            # pauses here for prod reviewers
+    uses: ./.github/workflows/_deploy.yml
+    with: { environment: prod, image_tag: "${{ github.ref_name }}" }</pre></div>
+
+      <h3>Reusable deploy job</h3>
+      <p>It runs on the VM's own runner and receives that environment's secrets only.</p>
+      <div class="code"><span class="label">.github/workflows/_deploy.yml</span><button class="copy" type="button">Copy</button><pre>on:
+  workflow_call:
+    inputs:
+      environment: { type: string, required: true }
+      image_tag:   { type: string, required: true }
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, "roshai-${{ inputs.environment }}"]
+    environment: ${{ inputs.environment }}
+    concurrency: { group: "deploy-${{ inputs.environment }}", cancel-in-progress: false }
+    permissions: { contents: read, packages: read }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write .env
+        env: { DOTENV: "${{ secrets.DOTENV }}" }
+        run: |
+          umask 077
+          mkdir -p /opt/roshai-control-tower/docker
+          printf '%s\n' "$DOTENV" &gt; /opt/roshai-control-tower/docker/.env
+      - name: Deploy
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          DEPLOY_ENV: ${{ inputs.environment }}
+        run: bash deploy/deploy.sh "${{ inputs.image_tag }}"</pre></div>
+    </section>
+
+    <section id="deploy">
+      <h2>What a deploy does</h2>
+      <p><code>deploy/deploy.sh</code> runs on the VM. Each step has to pass before the next one starts. If any step fails, the job goes red and the earlier containers keep running.</p>
+      <ol class="steps">
+        <li><div><p><strong>Copy the stack to a fixed folder.</strong> Sync <code>docker/</code> into <code>/opt/roshai-control-tower/docker/</code>. The containers bind-mount the Mosquitto, Traefik and MediaMTX configs, and the runner wipes its own checkout on every job, so the stack must never run from there.</p></div></li>
+        <li><div><p><strong>Pull the images.</strong> Log in to GHCR with the job's short-lived token and pull backend and frontend at the requested tag.</p></div></li>
+        <li><div><p><strong>Back up prod.</strong> Start Postgres if it isn't running, then (prod only) <code>pg_dump</code> to <code>/var/backups/roshai/</code>, keeping the newest 14.</p></div></li>
+        <li><div><p><strong>Migrate.</strong> Run <code>prisma migrate deploy</code> from the new backend image. The runtime image already includes the Prisma CLI and migrations, so the separate migrate image from the runbook goes away.</p></div></li>
+        <li><div><p><strong>Start the stack.</strong> Run <code>docker compose up -d --no-build --wait</code>, which waits for every existing healthcheck to pass. If the Tailscale service definition changed, recreate <code>tailscale</code>, <code>tailscale-cert-refresh</code>, <code>traefik</code> and <code>mediamtx</code> together, because they share one network namespace.</p></div></li>
+        <li><div><p><strong>Smoke check.</strong> Hit the backend's <code>/health</code> from inside its container. A non-200 response fails the job.</p></div></li>
+        <li><div><p><strong>Record and clean up.</strong> Write the tag to <code>/opt/roshai-control-tower/DEPLOYED</code> and prune images older than 7 days.</p></div></li>
+      </ol>
+      <div class="code"><span class="label">deploy/deploy.sh (core)</span><button class="copy" type="button">Copy</button><pre>#!/usr/bin/env bash
+set -euo pipefail
+TAG="$1"; ROOT=/opt/roshai-control-tower
+rsync -a --delete --exclude .env docker/ "$ROOT/docker/"
+cd "$ROOT"
+export IMAGE_TAG="$TAG"
+dc() { docker compose -f docker/docker-compose.yml "$@"; }
+
+echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+dc pull backend frontend
+dc up -d --wait postgres
+
+if [ "$DEPLOY_ENV" = prod ]; then
+  mkdir -p /var/backups/roshai
+  dc exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' \
+    | gzip &gt; "/var/backups/roshai/pre-$TAG-$(date +%Y%m%d%H%M).sql.gz"
+  ls -1t /var/backups/roshai/*.sql.gz | tail -n +15 | xargs -r rm --
+fi
+
+dc run --rm --no-deps backend npx prisma migrate deploy --schema backend/prisma/schema.prisma
+dc up -d --no-build --wait --wait-timeout 300
+dc exec -T backend node -e "require('http').get('http://localhost:3000/health',r=&gt;process.exit(r.statusCode===200?0:1)).on('error',()=&gt;process.exit(1))"
+
+echo "$TAG" &gt; "$ROOT/DEPLOYED"
+docker image prune -af --filter until=168h</pre></div>
+      <div class="callout"><strong>Migrations only move forward.</strong> Rolling back an image does not undo a database migration. Write migrations so the previous release still works with the new schema (add columns before removing them). For prod, the pre-deploy <code>pg_dump</code> is the safety net.</div>
+      <p><strong>Seeding is not part of the pipeline.</strong> <code>prisma db seed</code> runs once, when a new environment is first bootstrapped, and stays a manual runbook step.</p>
+    </section>
+
+    <section id="setup">
+      <h2>One-time setup</h2>
+
+      <h3>In GitHub (repo admin)</h3>
+      <ol class="steps">
+        <li><div><p><strong>Confirm the repo is private.</strong> Never attach self-hosted runners to a public repo, because anyone could open a PR that runs code on our servers.</p></div></li>
+        <li><div><p><strong>Create the <code>dev</code> environment.</strong> Under Settings → Environments, limit deployments to the <code>development</code> branch and <code>v*</code> tags. Add a secret <code>DOTENV</code> containing the full dev <code>.env</code>, using <code>docker/.env.example</code> as the template.</p></div></li>
+        <li><div><p><strong>Create the <code>prod</code> environment.</strong> Limit deployments to <code>v*</code> tags only, add required reviewers (at least one person other than the release author, where possible), and add a secret <code>DOTENV</code> with the prod values.</p></div></li>
+        <li><div><p><strong>Protect the branches.</strong> On <code>main</code> and <code>development</code>, require the <code>ci</code> check to pass and block direct pushes to <code>main</code>.</p></div></li>
+        <li><div><p><strong>Check package visibility.</strong> After the first build, confirm both GHCR packages are private and linked to the repo, so the deploy job's token can pull them.</p></div></li>
+      </ol>
+
+      <h3>On each VM (dev and prod)</h3>
+      <p>You need Ubuntu (or another Linux) with Docker Engine and the Compose plugin, plus outbound 443 to <code>github.com</code>, <code>*.actions.githubusercontent.com</code>, <code>ghcr.io</code> and <code>pkg-containers.githubusercontent.com</code>. No inbound ports are needed.</p>
+      <ol class="steps">
+        <li><div><p><strong>Create a dedicated runner user</strong> and the deploy and backup folders.</p>
+          <div class="code"><button class="copy" type="button" style="top:8px">Copy</button><pre>sudo useradd -m -s /bin/bash gh-runner
+sudo usermod -aG docker gh-runner
+sudo mkdir -p /opt/roshai-control-tower /var/backups/roshai
+sudo chown gh-runner:gh-runner /opt/roshai-control-tower /var/backups/roshai</pre></div>
+          <p>Membership in the <code>docker</code> group is effectively root. That's acceptable because this user exists only to deploy this stack.</p></div></li>
+        <li><div><p><strong>Install the runner.</strong> In GitHub, go to Settings → Actions → Runners → New self-hosted runner (Linux x64) and run the download commands it shows as <code>gh-runner</code>. Then register it with the right label:</p>
+          <div class="code"><button class="copy" type="button" style="top:8px">Copy</button><pre>./config.sh --url https://github.com/Rosh-Ai-Private-Limited/roshai-autopdi-control-tower \
+  --token &lt;registration-token&gt; \
+  --name roshai-dev-vm --labels roshai-dev --unattended
+# on the prod VM use: --name roshai-prod-vm --labels roshai-prod</pre></div></div></li>
+        <li><div><p><strong>Run it as a service</strong> so it survives reboots.</p>
+          <div class="code"><button class="copy" type="button" style="top:8px">Copy</button><pre>sudo ./svc.sh install gh-runner
+sudo ./svc.sh start
+sudo ./svc.sh status</pre></div></div></li>
+        <li><div><p><strong>Check it's online.</strong> The runner should show as <span class="pill ok">Idle</span> under Settings → Actions → Runners.</p></div></li>
+      </ol>
+
+      <h3>Cutting over the existing prod VM</h3>
+      <p>The compose project is fixed as <code>name: roshai-control-tower</code>. The pipeline's deploy therefore reuses the existing volumes (<code>pgdata</code>, <code>miniodata</code>, <code>tailscale-state</code> and the rest) from the new folder, and no data moves. Take a manual <code>pg_dump</code> first anyway. Once the first pipeline deploy is healthy, archive the old git-clone folder so nobody deploys from it by hand.</p>
+    </section>
+
+    <section id="daily">
+      <h2>Day-to-day use</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>I want to…</th><th>Do this</th></tr></thead>
+          <tbody>
+            <tr><td>Ship a change to dev</td><td>Merge the feature PR into <code>development</code>. Dev updates in a few minutes.</td></tr>
+            <tr><td>Release to prod</td><td>Merge <code>development</code> into <code>main</code>, then <code>git tag v0.3.0 &amp;&amp; git push origin v0.3.0</code>. Check dev, then approve the waiting prod job in the Actions tab.</td></tr>
+            <tr><td>Roll back prod</td><td>Actions → release → Run workflow, enter the previous tag (for example <code>v0.2.1</code>), then approve.</td></tr>
+            <tr><td>Roll back dev</td><td>Actions → deploy-dev → Run workflow with an earlier <code>sha-…</code> or <code>v…</code> tag.</td></tr>
+            <tr><td>Change a secret or env value</td><td>Edit <code>DOTENV</code> in that environment's settings, then re-run the latest deploy. Nothing is edited on the VM.</td></tr>
+            <tr><td>See what's running</td><td>Check the environment's deployment history in GitHub, or <code>cat /opt/roshai-control-tower/DEPLOYED</code> on the VM.</td></tr>
+            <tr><td>Restore prod data</td><td>Gunzip the matching file from <code>/var/backups/roshai/</code> into <code>psql</code> inside the postgres container. Follow the runbook, and stop the backend first.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>MQTT topic changes need coordination.</strong> Releases that change topics bots depend on (for example the multi-vehicle rename) still need a deploy time agreed with the bot team. The pipeline makes the deploy repeatable; it doesn't make a breaking contract change safe.</div>
+    </section>
+
+    <section id="rollout">
+      <h2>Rollout plan</h2>
+      <div class="phases">
+        <div class="phase">
+          <h3>Phase 1 · CI only</h3>
+          <ul><li>Add <code>ci.yml</code> and branch protection.</li><li>Nothing deploys yet. Every PR gets checked.</li></ul>
+        </div>
+        <div class="phase">
+          <h3>Phase 2 · Registry and dev deploy</h3>
+          <ul><li>Make the compose change and add the build workflow and deploy script.</li><li>Set up the org dev VM with a runner and the <code>dev</code> environment.</li><li>Merges to <code>development</code> now deploy automatically.</li></ul>
+        </div>
+        <div class="phase">
+          <h3>Phase 3 · Prod cut-over</h3>
+          <ul><li>Install a runner on the prod VM and create the <code>prod</code> environment with reviewers.</li><li>Take a manual backup, then cut <code>v1.0.0</code>, approve it, and confirm the volumes and data are intact.</li><li>Retire manual deploys.</li></ul>
+        </div>
+        <div class="phase">
+          <h3>Phase 4 · Hardening</h3>
+          <ul><li>Copy backups off the VM, for example a nightly sync to Blob or S3. Today they live on the same disk as the data.</li><li>Send failed-deploy notifications to the team channel.</li><li>Add image vulnerability scanning (for example Trivy) to CI.</li><li>Add a test stage once a test framework is chosen.</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="verify">
+      <h2>Verification</h2>
+      <ul class="checks">
+        <li>Run <code>actionlint</code> on <code>.github/workflows/</code>; it reports no errors.</li>
+        <li>A PR with a lint error fails <code>ci</code> and can't be merged. Fixing the error turns it green.</li>
+        <li>A merge to <code>development</code> pushes images to GHCR and deploys to dev. <code>docker compose ps</code> shows every service healthy.</li>
+        <li>The dev tailnet URL loads, password login works, and <code>tools/bot-simulator.ts</code> pointed at dev shows live telemetry.</li>
+        <li>A release candidate tag deploys to dev and then waits at the prod approval gate.</li>
+        <li>After approval, prod shows the new tag in <code>DEPLOYED</code>, and a new <code>pg_dump</code> file exists.</li>
+        <li>Rollback drill: redeploying the previous tag puts the old image digest back on prod (check with <code>docker inspect</code>).</li>
+        <li>Failure drill: a build with a broken <code>/health</code> turns the job red and doesn't touch the infra containers.</li>
+      </ul>
+    </section>
+
+    <section id="open">
+      <h2>Open items</h2>
+      <ul>
+        <li><strong>Container runtime on the org VM.</strong> The pipeline assumes Docker Engine on Linux. If the organization's IT only allows Docker Desktop with WSL2, or Podman, the runner still works, but <code>deploy.sh</code> has to be checked there first. This is the parked Docker runtime item in CLAUDE.md.</li>
+        <li><strong>Secret manager.</strong> GitHub Environment secrets are masked and scoped, which is fine at this scale. Move to Azure Key Vault or similar if the client requires secrets to stay in their own tenant.</li>
+        <li><strong>Plan quotas.</strong> Jobs on our own runners don't use GitHub Actions minutes, but builds on GitHub-hosted runners and private GHCR storage count against the org's plan. Check the plan's limits once the pipeline is running.</li>
+        <li><strong>Tests.</strong> The framework is still undecided. The pipeline has a place ready for a test stage.</li>
+      </ul>
+    </section>
+
+    <footer>Based on the repo as of Oct 2026: <code>docker/docker-compose.yml</code>, <code>docker/*.Dockerfile</code>, <code>docs/cloud-vm-setup-runbook.html</code> and CLAUDE.md. The workflow and script excerpts are the planned implementation, not yet committed.</footer>
+  </main>
+</div>
+
+<script>
+document.querySelectorAll('.code .copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var pre = btn.parentElement.querySelector('pre');
+    var text = pre.innerText;
+    function done(label) { btn.textContent = label; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); }
+    function fallback() {
+      var r = document.createRange(); r.selectNodeContents(pre);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      done('Selected');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done('Copied'); }, fallback);
+    } else { fallback(); }
+  });
+});
+</script>
+</body>
+</html>

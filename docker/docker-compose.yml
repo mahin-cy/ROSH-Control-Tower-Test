@@ -1,0 +1,415 @@
+name: roshai-control-tower
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # No host-published port here — local-dev-only convenience ports live
+    # in docker/docker-compose.override.yml (gitignored, created per-machine)
+    # so the base file stays production-safe (no public-IP exposure) by
+    # default. See CLAUDE.md's cloud VM deployment notes.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # No host-published port — see the postgres service comment above.
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # No named volume: Redis here is the rolling TTL-expired telemetry
+    # window + cache, not stateful data per CLAUDE.md's persistence list.
+
+  minio:
+    # minio/minio is abandoned upstream (official image frozen at
+    # RELEASE.2025-09-07, GitHub repo archived Apr 25 2026 — see CLAUDE.md
+    # Open Items). Swapped to pgsty/silo, an actively maintained fork:
+    # free/AGPL-3.0 (same license, no cost), same S3 API, restores the
+    # admin web console, and has shipped security patches within days of
+    # disclosure. Pinned to a specific release per the maintainer's own
+    # guidance, not `:latest`.
+    image: pgsty/silo:RELEASE.2026-09-03T13-18-01Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    # No host-published port — see the postgres service comment above.
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    entrypoint: ['/bin/sh', '/mosquitto-entrypoint.sh']
+    environment:
+      MOSQUITTO_BACKEND_USERNAME: ${MOSQUITTO_BACKEND_USERNAME}
+      MOSQUITTO_BACKEND_PASSWORD: ${MOSQUITTO_BACKEND_PASSWORD}
+    # No host-published port — real bots use MQTT-over-WSS via Traefik's
+    # /mqtt route below; see the postgres service comment above for why
+    # this differs from local dev.
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/acl.conf:/mosquitto/acl-src/acl.conf:ro
+      - ./mosquitto/entrypoint.sh:/mosquitto-entrypoint.sh:ro
+      - mosquittodata:/mosquitto/data
+      - mosquittolog:/mosquitto/log
+      - mosquittoruntime:/mosquitto/runtime
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "mosquitto_sub -h localhost -p 1883 -t '$$SYS/#' -C 1 -i healthcheck -W 3 -q 0 || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.mosquitto-ws.rule=PathPrefix(`/mqtt`)'
+      - 'traefik.http.routers.mosquitto-ws.entrypoints=websecure'
+      - 'traefik.http.routers.mosquitto-ws.tls=true'
+      - 'traefik.http.services.mosquitto-ws.loadbalancer.server.port=9001'
+
+  # Live video (Phase 2, decided Sep 2026) — see CLAUDE.md's "Live video"
+  # Tech Stack entry. Bot pushes H.264 via RTSP (port 8554); browser plays
+  # back via WHEP (port 8889) — two independent legs MediaMTX bridges,
+  # not a shared listener (WHIP was the original bot-ingest design; RTSP
+  # replaced it for broader GStreamer/camera-SDK compatibility, browser
+  # playback unaffected). Video media itself never touches the Node
+  # backend or MQTT — only the small video/control|status signaling pair
+  # does (see mqtt-client.ts).
+  #
+  # network_mode: service:tailscale (decided Sep 2026, found via real
+  # bot-team testing) — supersedes the original design of publishing
+  # RTSP/WebRTC-media ports via ordinary Docker `ports:`. On this
+  # project's Windows/Docker-Desktop dev host, a `ports:`-published port
+  # is only reliably reachable via Windows' own `localhost` — never via
+  # any other host-side network interface, including the Tailscale
+  # virtual adapter — so bot-ingest traffic arriving from another tailnet
+  # device was being refused before it ever reached this container, no
+  # matter how the Tailscale ACL or MediaMTX itself were configured.
+  # Traefik already sidesteps this identical problem by sharing the
+  # `tailscale` container's own network namespace instead of publishing a
+  # host port — MediaMTX now does the same, which is also why it has no
+  # `ports:` section below at all (a container sharing another's network
+  # namespace has no independent interface of its own to publish from).
+  # Effect: MediaMTX's ports (8554 RTSP, 8189 WebRTC media, 8889
+  # WHEP/HTTP, 9997 API) become reachable directly on the tailnet, the
+  # same way Traefik's 443 already is — and the two former dev-only
+  # localhost-published ports (8889, 9997) are gone; use `docker compose
+  # exec mediamtx ...` for local verification instead (see CLAUDE.md's
+  # Debugging section for the established pattern).
+  mediamtx:
+    # -ffmpeg variant used only for its Alpine base (shell + wget for the
+    # HEALTHCHECK below) — the plain `latest` image ships just the
+    # mediamtx binary with no shell at all, so no CMD-based healthcheck
+    # can exec inside it. Not used for its bundled ffmpeg; MediaMTX's own
+    # RTSP/WHEP relay doesn't need it for this feature.
+    image: bluenviron/mediamtx:latest-ffmpeg
+    network_mode: service:tailscale
+    environment:
+      # ICE candidates must advertise an address the bot/browser can
+      # actually reach. Kept explicit even though MediaMTX now shares the
+      # tailscale interface directly (and so could plausibly self-discover
+      # a reachable address via webrtcIPsFromInterfaces) — being explicit
+      # here is safer than relying on interface auto-detection inside a
+      # shared network namespace, and matches this project's habit of
+      # preferring explicit config over implicit behavior. Same tailnet
+      # MagicDNS hostname Traefik's own cert is issued for (see
+      # tailscale-cert-refresh above).
+      MTX_WEBRTCADDITIONALHOSTS: '${TS_HOSTNAME}.${TS_TAILNET_DOMAIN}'
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    depends_on:
+      tailscale:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:9997/v3/info']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # No `ports:` (see the network_mode note above) and no `traefik.*`
+    # labels — Traefik's Docker provider can't reliably auto-discover a
+    # backend address for a container with no network of its own (it
+    # shares tailscale's), so the /webrtc route is defined explicitly via
+    # Traefik's file provider instead (docker/traefik/dynamic-mediamtx.yml,
+    # mounted into the traefik service below), pointing at
+    # http://127.0.0.1:8889 — valid specifically because Traefik and
+    # MediaMTX now share one network namespace/loopback.
+
+  # Traefik's bundled Docker client fails to parse responses from the raw
+  # mounted socket on this Docker Desktop/Windows setup (protocol-level
+  # interop issue between Traefik's client and very new Docker Desktop API
+  # versions, not a config bug — verified independently against the socket).
+  # Routing through docker-socket-proxy sidesteps it and is also the
+  # least-privilege pattern (Traefik never gets raw docker.sock access,
+  # only the read-only container-list permission it actually needs).
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+      INFO: 1
+      PING: 1
+      VERSION: 1
+      EVENTS: 1
+      IMAGES: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:2375/version']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Tailscale sidecar: joins the client-site laptop to the private tailnet
+  # (MagicDNS) so the whole stack is reachable without any public internet
+  # exposure — see CLAUDE.md "Tailscale migration" notes. Traefik rides on
+  # this container's network namespace (network_mode: service:tailscale
+  # below) instead of publishing a public port; backend/frontend/mosquitto
+  # are untouched and keep resolving each other by container name via
+  # Docker's embedded DNS, since this container has no custom `networks:`
+  # override and stays a normal default-bridge-network member too.
+  tailscale:
+    image: tailscale/tailscale:stable
+    hostname: ${TS_HOSTNAME}
+    # Found during cloud VM rollout (Sep 2026): without real kernel network
+    # access, tailscaled falls back to `--tun=userspace-networking` (visible
+    # in its own startup log). Userspace mode passes TCP-based traffic fine
+    # (WHEP's HTTP signaling, RTSP's TCP control channel — which is why
+    # those appeared to work) but doesn't properly carry WebRTC's actual
+    # UDP/ICE media path: WHEP sessions returned 201 and negotiated
+    # successfully, but no video ever played, and the browser cycled
+    # create->silence->DELETE->retry indefinitely. cap_add + the tun device
+    # below is Tailscale's own documented Docker deployment guidance — it
+    # lets the image use a real TUN interface instead of the fallback.
+    # Scoped to this one container's own network namespace only (no
+    # network_mode: host here), not a host-wide privilege grant; every
+    # other service in this file is unaffected.
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      # Correction, same Sep 2026 finding: cap_add + the device alone
+      # weren't enough — containerboot (this image's entrypoint) still
+      # chose `--tun=userspace-networking` on its own even with both
+      # present and confirmed working (device visible host-side and
+      # inside the container, capability confirmed applied via `docker
+      # inspect`, no AppArmor denial in dmesg/journalctl). Forcing this
+      # explicitly is what actually flips it to real kernel networking.
+      TS_USERSPACE: 'false'
+      TS_AUTHKEY: ${TS_AUTHKEY}
+      TS_HOSTNAME: ${TS_HOSTNAME}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTH_ONCE: 'true'
+      TS_ENABLE_HEALTH_CHECK: 'true'
+      TS_EXTRA_ARGS: '--advertise-tags=tag:server'
+      # Without this, tailscaled's real socket lives at /tmp/tailscaled.sock
+      # with /var/run/tailscale/tailscaled.sock as just a symlink to it — the
+      # symlink is visible to tailscale-cert-refresh/traefik via the shared
+      # tailscale-run volume, but its /tmp target isn't, so the socket dial
+      # fails with "no such file or directory". Forcing the real socket path
+      # into the already-shared volume fixes that.
+      TS_SOCKET: /var/run/tailscale/tailscaled.sock
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - tailscale-run:/var/run/tailscale
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:9002/healthz']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Refreshes Traefik's TLS cert via `tailscale cert`, since (unlike
+  # `tailscale serve`) Traefik has no automatic cert issuance of its own.
+  # Shares the tailscale sidecar's network namespace + runtime socket dir
+  # so the CLI here talks to the same tailscaled instance. TS_TAILNET_DOMAIN
+  # is the tailnet's MagicDNS domain (Tailscale admin console > DNS) — the
+  # cert is requested for "${TS_HOSTNAME}.${TS_TAILNET_DOMAIN}".
+  tailscale-cert-refresh:
+    image: tailscale/tailscale:stable
+    network_mode: service:tailscale
+    entrypoint: ['/bin/sh', '-c']
+    # Found Sep 2026, same day as the control-tower-dev hostname rename:
+    # the old healthcheck (`test -f /certs/cert.pem`) only checked that
+    # *some* file existed — a stale cert left over from a previous
+    # hostname (this volume isn't cleared on a rename) satisfied it
+    # instantly, letting Traefik boot and load the wrong cert before
+    # `tailscale cert` below ever ran for the new name. Fixed by writing a
+    # marker recording which hostname the on-disk cert is actually for,
+    # only on a successful issuance (the `&&` matters — a failed
+    # `tailscale cert` must not update it), and having the healthcheck
+    # compare that marker against the hostname this deployment is
+    # actually configured for. No openssl in this image to parse the
+    # cert's CN directly, so this sidesteps needing it.
+    command:
+      - |
+        while true; do
+          tailscale cert --cert-file=/certs/cert.pem --key-file=/certs/key.pem "${TS_HOSTNAME}.${TS_TAILNET_DOMAIN}" \
+            && echo "${TS_HOSTNAME}.${TS_TAILNET_DOMAIN}" > /certs/.cert-hostname
+          sleep 86400
+        done
+    environment:
+      TS_HOSTNAME: ${TS_HOSTNAME}
+      TS_TAILNET_DOMAIN: ${TS_TAILNET_DOMAIN}
+    volumes:
+      - tailscale-run:/var/run/tailscale
+      - tailscale-certs:/certs
+    depends_on:
+      tailscale:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'test "$(cat /certs/.cert-hostname 2>/dev/null)" = "${TS_HOSTNAME}.${TS_TAILNET_DOMAIN}"'
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  traefik:
+    image: traefik:v3.7
+    network_mode: service:tailscale
+    command:
+      - '--log.level=INFO'
+      - '--providers.docker=true'
+      - '--providers.docker.endpoint=tcp://docker-socket-proxy:2375'
+      - '--providers.docker.exposedbydefault=false'
+      - '--providers.file.directory=/etc/traefik/dynamic'
+      - '--providers.file.watch=true'
+      - '--entrypoints.web.address=:80'
+      - '--entrypoints.websecure.address=:443'
+      - '--entrypoints.traefik.address=:8080'
+      - '--ping=true'
+      - '--api.dashboard=true'
+      # --api.insecure=true removed: it exposed the dashboard with no auth.
+      # The dashboard is no longer routed anywhere as a result — add a
+      # proper router (api@internal service) + auth middleware if dashboard
+      # access is needed again; not required for this migration.
+    volumes:
+      - ./traefik/dynamic-tls.yml:/etc/traefik/dynamic/dynamic-tls.yml:ro
+      - ./traefik/dynamic-mediamtx.yml:/etc/traefik/dynamic/dynamic-mediamtx.yml:ro
+      - tailscale-certs:/certs:ro
+    depends_on:
+      docker-socket-proxy:
+        condition: service_healthy
+      tailscale:
+        condition: service_healthy
+      tailscale-cert-refresh:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      LOG_LEVEL: ${LOG_LEVEL}
+      PORT: ${BACKEND_PORT}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      MQTT_BROKER_URL: ${MQTT_BROKER_URL}
+      MQTT_USERNAME: ${MOSQUITTO_BACKEND_USERNAME}
+      MQTT_PASSWORD: ${MOSQUITTO_BACKEND_PASSWORD}
+      # Must be reachable BY THE BOT (an external tailnet device), not
+      # just by this container. RTSP bypasses Traefik entirely (see
+      # mediamtx.yml/this file's mediamtx service comments) — this is the
+      # tailnet hostname + MediaMTX's published RTSP port directly, not a
+      # Traefik-routed URL like the OIDC ones below. Same "won't work
+      # until the real tailnet domain is set" posture either way. See
+      # video-control-service.ts.
+      VIDEO_RTSP_BASE_URL: ${VIDEO_RTSP_BASE_URL}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
+      OIDC_POST_LOGIN_REDIRECT: ${OIDC_POST_LOGIN_REDIRECT}
+      # Reuses the MinIO root credential for now — no scoped backend-only
+      # MinIO user exists yet (see CLAUDE.md Open Items). Internal
+      # container-to-container endpoint, not the host-published one.
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+    # No host-published port here — local tooling (tools/bot-simulator.ts)
+    # that needs to reach this container from outside Docker gets it via
+    # docker-compose.override.yml (gitignored, per-machine); the
+    # real/fielded path stays Traefik-only regardless (see the
+    # traefik.http.routers.backend labels below).
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:3000/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/socket.io`)'
+      - 'traefik.http.routers.backend.entrypoints=websecure'
+      - 'traefik.http.routers.backend.tls=true'
+      - 'traefik.http.services.backend.loadbalancer.server.port=3000'
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:3000/']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.frontend.rule=PathPrefix(`/`)'
+      - 'traefik.http.routers.frontend.priority=1'
+      - 'traefik.http.routers.frontend.entrypoints=websecure'
+      - 'traefik.http.routers.frontend.tls=true'
+      - 'traefik.http.services.frontend.loadbalancer.server.port=3000'
+
+volumes:
+  pgdata:
+  miniodata:
+  mosquittodata:
+  mosquittolog:
+  mosquittoruntime:
+  tailscale-state:
+  tailscale-run:
+  tailscale-certs:

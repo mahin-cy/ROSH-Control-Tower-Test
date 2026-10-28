@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Env files — never commit secrets, but keep the templates
+.env
+.env.*.local
+.env.loadtest
+!.env.example
+!**/.env.example
+!.env.loadtest.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Prisma
+backend/prisma/*.db
+
+# Docker local overrides
+docker/docker-compose.override.yml
+
+# Local test fixtures & reports (not source)
+video-test/mock_vehicle*.mp4
+video-test/test-results/
+
+# Load-test artifacts
+load-test-report.json
+load-test-report.html
+video-quality/node_modules/
+video-quality/test-results/
+video-quality/playwright-report*/
+video-quality/*.png
+video-quality/*.zip

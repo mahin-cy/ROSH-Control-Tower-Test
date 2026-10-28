@@ -1,0 +1,45 @@
+{
+  "name": "roshai-control-tower",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "prepare": "husky || true",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspace=shared && npm run build --workspaces --if-present",
+    "load:test": "node tools/load-test/run-load-test.mjs",
+    "load:test:video": "node tools/load-test/run-load-test.mjs --video"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "eslint": "^9.24.0",
+    "@eslint/js": "^9.24.0",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.5.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.5.0"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true,
+    "prisma@6.19.3": true,
+    "argon2@0.45.1": true,
+    "@bufbuild/buf@1.72.0": true
+  }
+}

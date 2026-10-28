@@ -1,0 +1,561 @@
+<title>Cloud VM Setup Runbook</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F2F4F5;
+    --surface: #FFFFFF;
+    --surface-2: #E7EBEC;
+    --ink: #17222B;
+    --ink-muted: #55636C;
+    --ink-faint: #869199;
+    --line: #DBE1E3;
+    --line-strong: #C1CACD;
+    --accent: #A85A0C;
+    --accent-ink: #FFFFFF;
+    --accent-tint: #F4E4D0;
+    --good: #1E7A5C;
+    --good-tint: #DDEEE7;
+    --warn: #A93A24;
+    --warn-tint: #F8E1DA;
+    --code-bg: #10171C;
+    --code-ink: #DCE6E9;
+    --code-muted: #74858D;
+    --code-key: #E3A25F;
+    --code-str: #8FC7A8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F1519;
+      --surface: #161E23;
+      --surface-2: #1C262C;
+      --ink: #E7EDEF;
+      --ink-muted: #9AA9B0;
+      --ink-faint: #64757D;
+      --line: #263038;
+      --line-strong: #334049;
+      --accent: #E29A54;
+      --accent-ink: #17222B;
+      --accent-tint: #2E2317;
+      --good: #5FC29E;
+      --good-tint: #142924;
+      --warn: #E97F65;
+      --warn-tint: #331B15;
+      --code-bg: #0B1013;
+      --code-ink: #DDE7EA;
+      --code-muted: #74858D;
+      --code-key: #E3A25F;
+      --code-str: #8FC7A8;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1519;
+    --surface: #161E23;
+    --surface-2: #1C262C;
+    --ink: #E7EDEF;
+    --ink-muted: #9AA9B0;
+    --ink-faint: #64757D;
+    --line: #263038;
+    --line-strong: #334049;
+    --accent: #E29A54;
+    --accent-ink: #17222B;
+    --accent-tint: #2E2317;
+    --good: #5FC29E;
+    --good-tint: #142924;
+    --warn: #E97F65;
+    --warn-tint: #331B15;
+    --code-bg: #0B1013;
+    --code-ink: #DDE7EA;
+    --code-muted: #74858D;
+    --code-key: #E3A25F;
+    --code-str: #8FC7A8;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 15.5px;
+    line-height: 1.62;
+  }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, .toc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  ::selection { background: var(--accent-tint); }
+
+  .page { max-width: 1200px; margin: 0 auto; padding: 0 28px 100px; }
+
+  header.spec-head {
+    padding: 46px 0 30px;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow {
+    display: flex; align-items: center; gap: 10px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  .eyebrow::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint);
+  }
+  h1.title {
+    font-family: "IBM Plex Sans Condensed", sans-serif;
+    font-weight: 700;
+    font-size: clamp(2.1rem, 4vw, 3rem);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 10px;
+  }
+  p.dek { color: var(--ink-muted); font-size: 1.05rem; max-width: 66ch; margin: 0 0 26px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+  .meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .meta-item .k {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .meta-item .v { font-size: 13.5px; font-weight: 500; }
+
+  .layout { display: grid; grid-template-columns: 224px 1fr; gap: 48px; margin-top: 36px; align-items: start; }
+  nav.toc { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1px; padding-right: 8px; }
+  nav.toc .toc-label {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 8px;
+  }
+  nav.toc a {
+    color: var(--ink-muted); text-decoration: none; font-size: 13px;
+    padding: 5px 0 5px 12px; border-left: 2px solid var(--line);
+    display: flex; gap: 8px;
+  }
+  nav.toc a .n { font-family: "IBM Plex Mono", monospace; color: var(--ink-faint); font-size: 11px; }
+  nav.toc a:hover { color: var(--ink); border-left-color: var(--line-strong); }
+  nav.toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+  nav.toc a.active .n { color: var(--accent); }
+
+  main { min-width: 0; }
+  section.block { padding: 38px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 20px; }
+  section.block:last-of-type { border-bottom: none; }
+
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .sec-head .num {
+    font-family: "IBM Plex Mono", monospace; color: var(--accent); font-size: 0.95rem; flex: none;
+  }
+  h2 {
+    font-family: "IBM Plex Sans Condensed", sans-serif; font-weight: 600;
+    font-size: 1.5rem; text-wrap: balance; margin: 0;
+  }
+  h3 { font-size: 1.02rem; font-weight: 600; margin: 26px 0 10px; }
+  section.block > p, section.block > ul, section.block > ol { max-width: 70ch; }
+  p { margin: 0 0 13px; }
+  section.block > p:first-of-type { margin-top: 16px; }
+  ul, ol { padding-left: 22px; margin: 0 0 13px; }
+  li { margin-bottom: 6px; }
+  code.inline {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.86em;
+    background: var(--surface-2); border: 1px solid var(--line);
+    padding: 1.5px 5px; border-radius: 4px; color: var(--ink);
+  }
+  strong { font-weight: 600; }
+
+  .code-block { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 10px 0 18px; border: 1px solid #ffffff14; }
+  .code-tab {
+    display: flex; align-items: center; justify-content: space-between; padding: 8px 16px;
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: 0.04em;
+    color: var(--code-muted); border-bottom: 1px solid #ffffff14;
+  }
+  .code-block pre { margin: 0; padding: 15px 18px 17px; overflow-x: auto; }
+  .code-block code {
+    font-family: "IBM Plex Mono", monospace; font-size: 12.8px; line-height: 1.6;
+    color: var(--code-ink); white-space: pre;
+  }
+  .c-cmt { color: var(--code-muted); }
+  .c-key { color: var(--code-key); }
+  .c-str { color: var(--code-str); }
+
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-tint); border-radius: 0 8px 8px 0; padding: 13px 17px; font-size: 13.7px; color: var(--ink); max-width: 70ch; margin: 8px 0 18px; }
+  .callout strong { color: var(--accent); }
+
+  .gotcha { border-left: 3px solid var(--warn); background: var(--warn-tint); border-radius: 0 8px 8px 0; padding: 13px 17px; max-width: 70ch; margin: 8px 0 18px; }
+  .gotcha .g-label {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--warn); font-weight: 600; margin-bottom: 5px; display: block;
+  }
+  .gotcha p { color: var(--ink); font-size: 13.7px; margin-bottom: 0; }
+  .gotcha p + p { margin-top: 8px; }
+
+  .verified { border-left: 3px solid var(--good); background: var(--good-tint); border-radius: 0 8px 8px 0; padding: 13px 17px; max-width: 70ch; margin: 8px 0 18px; }
+  .verified .v-label {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--good); font-weight: 600; margin-bottom: 5px; display: block;
+  }
+  .verified p { color: var(--ink); font-size: 13.7px; margin-bottom: 0; }
+
+  .sequence { list-style: none; padding: 0; margin: 10px 0 18px; counter-reset: seq; display: flex; flex-direction: column; gap: 0; }
+  .sequence li { counter-increment: seq; position: relative; padding: 0 0 20px 38px; margin: 0; }
+  .sequence li::before {
+    content: counter(seq); position: absolute; left: 0; top: 0; width: 24px; height: 24px;
+    border-radius: 50%; background: var(--surface-2); border: 1px solid var(--line-strong); color: var(--ink-muted);
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums;
+  }
+  .sequence li::after { content: ""; position: absolute; left: 11px; top: 24px; bottom: -2px; width: 1px; background: var(--line); }
+  .sequence li:last-child::after { display: none; }
+  .sequence li .seq-title { font-weight: 600; margin-bottom: 3px; }
+  .sequence li .seq-body { color: var(--ink-muted); font-size: 13.6px; max-width: 62ch; }
+  .sequence li .seq-body > *:last-child { margin-bottom: 0; }
+
+  .prereq-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin: 12px 0 18px; }
+  @media (max-width: 680px) { .prereq-grid { grid-template-columns: 1fr; } }
+  .prereq-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 13px 16px; }
+  .prereq-card .p-label { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .prereq-card .p-body { font-size: 13px; color: var(--ink-muted); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; margin: 10px 0 6px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--surface); }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--line); font-size: 13.3px; vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 500; background: var(--surface-2);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code.inline { white-space: nowrap; }
+
+  .checklist { list-style: none; padding: 0; margin: 10px 0 4px; display: flex; flex-direction: column; gap: 8px; }
+  .checklist li {
+    display: flex; gap: 10px; align-items: baseline; padding: 10px 14px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin: 0; font-size: 13.6px;
+  }
+  .checklist li::before { content: "\2713"; color: var(--good); font-weight: 700; flex: none; }
+
+  footer { margin-top: 44px; padding-top: 22px; color: var(--ink-faint); font-size: 12.3px; font-family: "IBM Plex Mono", monospace; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; gap: 20px; }
+    nav.toc { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+    nav.toc .toc-label { display: none; }
+    nav.toc a { border-left: none; border: 1px solid var(--line); border-radius: 100px; padding: 5px 12px; }
+    nav.toc a.active { background: var(--accent-tint); border-color: var(--accent); }
+  }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="page">
+
+  <header class="spec-head">
+    <div class="eyebrow">Ops Runbook &middot; First Cloud VM Deployment</div>
+    <h1 class="title">Cloud VM Setup Runbook</h1>
+    <p class="dek">Step-by-step setup for the RoshAI Control Tower on a client-provided cloud VM &mdash; written so someone doing this for the first time, with no prior context, can get it right without pulling in anyone else. Every gotcha here is one we actually hit.</p>
+    <div class="meta-row">
+      <div class="meta-item"><span class="k">Target</span><span class="v">Any fresh Ubuntu 24.04 LTS cloud VM</span></div>
+      <div class="meta-item"><span class="k">Access model</span><span class="v">Tailscale-only, no public exposure</span></div>
+      <div class="meta-item"><span class="k">Assumes</span><span class="v">Basic Linux/SSH familiarity</span></div>
+      <div class="meta-item"><span class="k">Verified against</span><span class="v">Azure Standard D2s v3, Sep 2026</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Sections">
+      <span class="toc-label">On this page</span>
+      <a href="#prereq"><span class="n">00</span>Prerequisites</a>
+      <a href="#access-model"><span class="n">01</span>Access model</a>
+      <a href="#nsg"><span class="n">02</span>Lock down the NSG</a>
+      <a href="#ssh"><span class="n">03</span>SSH &amp; sudo</a>
+      <a href="#docker"><span class="n">04</span>Install Docker</a>
+      <a href="#repo"><span class="n">05</span>Repo access</a>
+      <a href="#tailscale-id"><span class="n">06</span>Tailscale identity</a>
+      <a href="#env"><span class="n">07</span>docker/.env</a>
+      <a href="#tun"><span class="n">08</span>Tailscale networking</a>
+      <a href="#build"><span class="n">09</span>Build &amp; start</a>
+      <a href="#migrate"><span class="n">10</span>Migrate &amp; seed</a>
+      <a href="#verify"><span class="n">11</span>Verify</a>
+      <a href="#bot"><span class="n">12</span>Bot hand-off</a>
+      <a href="#troubleshoot"><span class="n">13</span>Troubleshooting</a>
+    </nav>
+
+    <main>
+
+      <section class="block" id="prereq">
+        <div class="sec-head"><span class="num">00</span><h2>Prerequisites</h2></div>
+        <p>Get all of this from the client <em>before</em> you start &mdash; every one of these has caused a stall mid-setup at least once.</p>
+        <div class="prereq-grid">
+          <div class="prereq-card"><div class="p-label">VM connection details</div><div class="p-body">Resource group, VM name, public IP, SSH username/port, and the private key file itself.</div></div>
+          <div class="prereq-card"><div class="p-label">Repo &amp; branch</div><div class="p-body">The client's repo URL and which branch the VM should track (<code class="inline">development</code> this time) &mdash; don't assume <code class="inline">main</code>.</div></div>
+          <div class="prereq-card"><div class="p-label">Tailscale admin console access</div><div class="p-body">Needed to generate an auth key and read the tailnet's MagicDNS domain.</div></div>
+        </div>
+      </section>
+
+      <section class="block" id="access-model">
+        <div class="sec-head"><span class="num">01</span><h2>Access model</h2></div>
+        <p>This app is reached <strong>only over Tailscale</strong> &mdash; never over the VM's public IP. The public IP exists solely so you can SSH in to administer the box. Keep this in mind through every step below: locking the cloud firewall down to just SSH (next section) does not break the app, because Tailscale never needs an inbound firewall rule to work &mdash; it connects outbound and either finds a direct path or relays through Tailscale's own servers.</p>
+      </section>
+
+      <section class="block" id="nsg">
+        <div class="sec-head"><span class="num">02</span><h2>Lock down the cloud firewall (NSG)</h2></div>
+        <p>An NSG (Network Security Group, Azure's term &mdash; other clouds call this a security group) is a firewall that sits in front of the VM at the cloud provider's network layer, before traffic ever reaches the VM's own operating system. Separate from anything configured inside Linux.</p>
+        <ol>
+          <li>In the cloud console, find the VM's network security rules.</li>
+          <li>Confirm exactly one inbound allow rule exists: <strong>TCP port 22</strong> (ideally scoped to a known admin IP range, not "Any").</li>
+          <li>Remove every other inbound allow rule you find &mdash; quickstart-created VMs sometimes have 80/443/3389 pre-opened.</li>
+        </ol>
+        <p>Everything else stays closed by the provider's default deny &mdash; you don't need to add explicit deny rules.</p>
+        <div class="callout"><strong>Verify from outside</strong>, once the app is running (Section 11) &mdash; from a network that is <em>not</em> on the tailnet, confirm only port 22 responds:</div>
+        <div class="code-block">
+          <div class="code-tab"><span>powershell &mdash; run from any Windows machine off the tailnet</span></div>
+          <pre><code><span class="c-key">$ip</span>=<span class="c-str">"&lt;public-ip&gt;"</span>; 22,80,443,1883,5432,6379,9000,9001,3000 | <span class="c-key">ForEach-Object</span> { <span class="c-key">$r</span> = Test-NetConnection -ComputerName <span class="c-key">$ip</span> -Port <span class="c-key">$_</span> -WarningAction SilentlyContinue; <span class="c-str">"$_ -> $(if ($r.TcpTestSucceeded) {'OPEN'} else {'closed/filtered'})"</span> }</code></pre>
+        </div>
+        <p>Only <code class="inline">22</code> should print <code class="inline">OPEN</code>.</p>
+      </section>
+
+      <section class="block" id="ssh">
+        <div class="sec-head"><span class="num">03</span><h2>Connect over SSH, confirm sudo</h2></div>
+        <div class="code-block">
+          <div class="code-tab"><span>connect</span></div>
+          <pre><code>ssh -i <span class="c-str">"&lt;path-to-private-key&gt;"</span> &lt;ssh-username&gt;@&lt;public-ip&gt;</code></pre>
+        </div>
+        <div class="gotcha">
+          <span class="g-label">The single biggest source of confusion this rollout</span>
+          <p>If you're on Windows, every command from here on runs in <strong>two different worlds</strong>: your local PowerShell (before the SSH connection) and the VM's own Linux shell (after it connects). Watch the prompt &mdash; <code class="inline">PS C:\...&gt;</code> means you're still local; <code class="inline">user@host:~$</code> means you're on the VM. Every "this Linux command is failing" error hit during this rollout &mdash; <code class="inline">ssh-keygen -N ""</code> failing with "option requires an argument," and a <code class="inline">&lt;&lt;'EOF'</code> heredoc failing with "missing file specification" &mdash; turned out to be the same command typed into the wrong prompt. If a plain Linux command throws a Windows-flavored error, that's the tell.</p>
+          <p>SSH sessions also time out from inactivity &mdash; if a command that worked five minutes ago suddenly fails the same way, reconnect and check the prompt again before assuming anything else is wrong.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-tab"><span>confirm passwordless sudo, once connected</span></div>
+          <pre><code>sudo -n <span class="c-key">true</span> &amp;&amp; <span class="c-key">echo</span> <span class="c-str">"sudo OK"</span> || <span class="c-key">echo</span> <span class="c-str">"a real password is required"</span></code></pre>
+        </div>
+        <p>If a real password is required and none was given to you, use the cloud console's password-reset feature for the VM (Azure: the "Reset password" blade) &mdash; it sets a Linux account password without disturbing your existing SSH key.</p>
+      </section>
+
+      <section class="block" id="docker">
+        <div class="sec-head"><span class="num">04</span><h2>Install Docker Engine</h2></div>
+        <p>Docker Engine, not Docker Desktop &mdash; Desktop is for workstations with a GUI and has licensing terms that don't apply here.</p>
+        <div class="code-block">
+          <div class="code-tab"><span>on the VM</span></div>
+          <pre><code>sudo apt update &amp;&amp; sudo apt upgrade -y
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker <span class="c-key">$USER</span></code></pre>
+        </div>
+        <p>Log out and back in (or run <code class="inline">newgrp docker</code>) so the group membership takes effect before continuing.</p>
+      </section>
+
+      <section class="block" id="repo">
+        <div class="sec-head"><span class="num">05</span><h2>Repo access</h2></div>
+        <ol class="sequence">
+          <li>
+            <div class="seq-title">Generate a deploy key <em>on the VM itself</em></div>
+            <div class="seq-body">
+              <p>So the private half never has to leave the machine that uses it. No passphrase flag needed &mdash; just press Enter twice at the prompts, which also sidesteps the Windows/Linux quoting issue from Section 3 entirely.</p>
+              <div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>ssh-keygen -t ed25519 -C <span class="c-str">"roshai-pilot-vm"</span> -f ~/.ssh/deploy_key
+cat ~/.ssh/deploy_key.pub</code></pre></div>
+            </div>
+          </li>
+          <li>
+            <div class="seq-title">Add the public key as a read-only deploy key</div>
+            <div class="seq-body">On the client's repo from Section 00 &mdash; leave "allow write access" unchecked.</div>
+          </li>
+          <li>
+            <div class="seq-title">Point SSH at this key for GitHub specifically</div>
+            <div class="seq-body">
+              <div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code><span class="c-key">cat</span> &gt;&gt; ~/.ssh/config &lt;&lt;<span class="c-str">'EOF'</span>
+Host github.com
+  IdentityFile ~/.ssh/deploy_key
+  IdentitiesOnly yes
+EOF</code></pre></div>
+            </div>
+          </li>
+          <li>
+            <div class="seq-title">Clone the repo, on the confirmed branch</div>
+            <div class="seq-body"><div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>git clone --branch development git@github.com:&lt;org&gt;/&lt;repo&gt;.git
+<span class="c-key">cd</span> &lt;repo-folder&gt;</code></pre></div></div>
+          </li>
+        </ol>
+        <div class="gotcha"><span class="g-label">If pushing from your own dev machine too</span><p>Swapping between an org repo and a client repo on the same Windows machine via saved HTTPS credentials is a common source of a confusing "repository not found" (which is actually a stale cached credential, not a real permissions problem). Remove the <code class="inline">git:https://github.com</code> entry in Windows Credential Manager before switching which repo you're pushing to.</p></div>
+      </section>
+
+      <section class="block" id="tailscale-id">
+        <div class="sec-head"><span class="num">06</span><h2>Tailscale identity: auth key &amp; hostname</h2></div>
+        <ol class="sequence">
+          <li>
+            <div class="seq-title">Generate a reusable auth key</div>
+            <div class="seq-body">Tailscale admin console &rarr; Settings &rarr; Keys &rarr; Generate auth key. Tick <strong>Reusable</strong>, tag it <code class="inline">tag:server</code>.</div>
+          </li>
+          <li>
+            <div class="seq-title">Get the tailnet's MagicDNS domain</div>
+            <div class="seq-body">Settings &rarr; DNS &mdash; looks like <code class="inline">taildXXXXX.ts.net</code>.</div>
+          </li>
+          <li>
+            <div class="seq-title">Pick a hostname <strong>no other device on this tailnet is already using</strong></div>
+            <div class="seq-body">This is the step most likely to bite. Check the admin console's device list first.</div>
+          </li>
+        </ol>
+        <div class="gotcha">
+          <span class="g-label">Hit this rollout &mdash; hostname collision</span>
+          <p>Reusing an existing device's hostname (e.g. an existing laptop deployment's) doesn't produce an error &mdash; Tailscale silently registers the new device under an auto-suffixed name instead (<code class="inline">roshai-control-tower</code> &rarr; <code class="inline">roshai-control-tower-1</code>). That auto-suffixed name then has to <em>exactly</em> match two other places that reference it literally in this stack's config, or things fail in confusing, disconnected-looking ways:</p>
+          <ul>
+            <li>The TLS cert request in <code class="inline">tailscale-cert-refresh</code> &mdash; fails with <code class="inline">invalid domain "X"; must be one of ["X-1"]</code> if the configured hostname doesn't match what was actually assigned.</li>
+            <li><code class="inline">MTX_WEBRTCADDITIONALHOSTS</code> (MediaMTX's advertised WebRTC address) &mdash; if wrong, video signaling succeeds but no media ever plays, with zero error message pointing at the real cause.</li>
+          </ul>
+          <p>If it happens: just set <code class="inline">TS_HOSTNAME</code> in <code class="inline">docker/.env</code> (next section) to the actual assigned name, or pick a genuinely distinct one and let it re-register &mdash; either way, confirm the admin console shows the name you expect before moving on.</p>
+        </div>
+      </section>
+
+      <section class="block" id="env">
+        <div class="sec-head"><span class="num">07</span><h2>Create <code class="inline">docker/.env</code></h2></div>
+        <div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>cp docker/.env.example docker/.env
+nano docker/.env</code></pre></div>
+        <h3>Generating secrets</h3>
+        <div class="code-block"><div class="code-tab"><span>on the VM &mdash; run once per secret needed</span></div><pre><code>openssl rand -hex 24</code></pre></div>
+        <div class="gotcha"><span class="g-label">Use <code class="inline">-hex</code>, not <code class="inline">-base64</code></span><p>Base64 output can contain <code class="inline">/</code>, <code class="inline">+</code>, <code class="inline">=</code> &mdash; any of which silently corrupts a <code class="inline">postgresql://user:pass@host/db</code>-style connection string if the password lands there unescaped. This rollout lost real time chasing a Postgres "invalid credentials" error that was actually just an un-encoded slash in a generated password. Hex output (<code class="inline">0-9a-f</code> only) never has this problem.</p></div>
+        <h3>What to actually fill in</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Variable</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td><code class="inline">POSTGRES_PASSWORD</code></td><td>A generated secret</td></tr>
+              <tr><td><code class="inline">MINIO_ROOT_PASSWORD</code></td><td>A generated secret</td></tr>
+              <tr><td><code class="inline">MOSQUITTO_BACKEND_PASSWORD</code></td><td>A generated secret</td></tr>
+              <tr><td><code class="inline">SEED_ADMIN_PASSWORD</code></td><td>A generated secret &mdash; this becomes the real first login</td></tr>
+              <tr><td><code class="inline">SEED_ADMIN_EMAIL</code></td><td>A real address you'll actually log in with</td></tr>
+              <tr><td><code class="inline">DATABASE_URL</code></td><td>Rebuild it to match <code class="inline">POSTGRES_PASSWORD</code> exactly &mdash; see gotcha below</td></tr>
+              <tr><td><code class="inline">NODE_ENV</code></td><td>Change to <code class="inline">production</code> &mdash; the template defaults to <code class="inline">development</code></td></tr>
+              <tr><td><code class="inline">TS_AUTHKEY</code></td><td>From Section 06</td></tr>
+              <tr><td><code class="inline">TS_HOSTNAME</code></td><td>From Section 06 &mdash; the confirmed-unique name</td></tr>
+              <tr><td><code class="inline">TS_TAILNET_DOMAIN</code></td><td>From Section 06</td></tr>
+              <tr><td><code class="inline">VIDEO_RTSP_BASE_URL</code></td><td><code class="inline">rtsp://&lt;TS_HOSTNAME&gt;.&lt;TS_TAILNET_DOMAIN&gt;:8554</code> &mdash; see gotcha below</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="gotcha">
+          <span class="g-label">Two real mistakes made this rollout, both silent</span>
+          <p><strong>Duplicate lines.</strong> An edit to <code class="inline">DATABASE_URL</code> left <em>two</em> <code class="inline">DATABASE_URL=</code> lines in the file &mdash; one stale, one correct. Whichever the parser reads last silently wins, so every "fix" to the wrong copy kept failing with no obvious reason. After any edit: <code class="inline">grep -c "^VARNAME=" docker/.env</code> should print exactly <code class="inline">1</code>.</p>
+          <p><strong>The placeholder that looks real.</strong> <code class="inline">VIDEO_RTSP_BASE_URL</code>'s template value is <code class="inline">rtsp://roshai-control-tower.{tailnet-domain}:8554</code> &mdash; the <code class="inline">{tailnet-domain}</code> is literal, unsubstituted text, easy to mistake for a filled-in example. It has to be manually replaced. Don't add a trailing path &mdash; the backend appends <code class="inline">/AUTO</code> itself.</p>
+        </div>
+        <p>Save (<code class="inline">Ctrl+O</code>, Enter, <code class="inline">Ctrl+X</code> in nano), then lock the file down:</p>
+        <div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code><span class="c-key">chmod</span> 600 docker/.env</code></pre></div>
+      </section>
+
+      <section class="block" id="tun">
+        <div class="sec-head"><span class="num">08</span><h2>Tailscale container networking</h2></div>
+        <p>This section exists because of a two-round bug this rollout spent real time on &mdash; if the compose file already has this fix, skip to Section 09. If setting this project up fresh on a new VM and video/WebRTC doesn't work, come back here.</p>
+        <div class="verified">
+          <span class="v-label">What the fix looks like, in <code class="inline">docker-compose.yml</code></span>
+          <p>The <code class="inline">tailscale</code> service needs <strong>all three</strong> of these together &mdash; two alone were not enough:</p>
+        </div>
+        <div class="code-block"><div class="code-tab"><span>docker-compose.yml &mdash; tailscale service</span></div><pre><code>  tailscale:
+    <span class="c-key">cap_add</span>:
+      - NET_ADMIN
+      - NET_RAW
+    <span class="c-key">devices</span>:
+      - /dev/net/tun:/dev/net/tun
+    <span class="c-key">environment</span>:
+      TS_USERSPACE: <span class="c-str">'false'</span>
+      <span class="c-cmt"># ...existing TS_AUTHKEY / TS_HOSTNAME / etc.</span></code></pre></div>
+        <h3>Why this matters</h3>
+        <p>Without real kernel network access, Tailscale's own startup script falls back to <code class="inline">--tun=userspace-networking</code> &mdash; visible directly in its boot log. That mode carries TCP-based traffic fine (which is why HTTP/WHEP signaling and RTSP's TCP control channel work), but can't properly carry WebRTC's actual UDP media path. Symptom: video signaling succeeds (<code class="inline">201</code> responses) but no video ever plays, cycling create&rarr;silence&rarr;delete&rarr;retry indefinitely.</p>
+        <h3>Diagnostic checklist, in order</h3>
+        <ol class="sequence">
+          <li><div class="seq-title">Check the actual mode</div><div class="seq-body"><div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>docker compose -f docker/docker-compose.yml logs tailscale | grep -i userspace</code></pre></div>Empty means real networking is active. Any output means it's still falling back.</div></li>
+          <li><div class="seq-title">Confirm the device exists, both places</div><div class="seq-body"><div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code><span class="c-key">ls</span> -la /dev/net/tun
+docker compose -f docker/docker-compose.yml exec tailscale <span class="c-key">ls</span> -la /dev/net/tun</code></pre></div>If missing on the host: <code class="inline">sudo modprobe tun</code>, then recheck.</div></li>
+          <li><div class="seq-title">Confirm the capability actually applied to the running container</div><div class="seq-body"><div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>docker <span class="c-key">inspect</span> <span class="c-str">$(docker compose -f docker/docker-compose.yml ps -q tailscale)</span> --format <span class="c-str">"CapAdd: {{.HostConfig.CapAdd}}"</span></code></pre></div>Should show <code class="inline">NET_ADMIN</code>. A stale un-recreated container won't.</div></li>
+          <li><div class="seq-title">Rule out AppArmor</div><div class="seq-body"><div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code><span class="c-key">sudo</span> dmesg | grep -i apparmor | tail -30</code></pre></div>Look for a <code class="inline">DENIED</code> line naming a network/tun-related operation near the container's start time. On this rollout's VM, all four checks above came back clean and <code class="inline">TS_USERSPACE: 'false'</code> was still the missing piece &mdash; try that first if you're short on time.</div></li>
+        </ol>
+        <div class="gotcha">
+          <span class="g-label">Recreating tailscale alone will take the whole app down</span>
+          <p><code class="inline">traefik</code>, <code class="inline">tailscale-cert-refresh</code>, and <code class="inline">mediamtx</code> all use <code class="inline">network_mode: service:tailscale</code> &mdash; they share that specific container's network namespace instead of having their own. Recreating <code class="inline">tailscale</code> by itself leaves those three attached to the now-removed old namespace, and the login page starts returning "refused to connect." <strong>Always recreate all four together:</strong></p>
+          <div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>docker compose -f docker/docker-compose.yml up -d --force-recreate <span class="c-key">tailscale tailscale-cert-refresh traefik mediamtx</span></code></pre></div>
+        </div>
+      </section>
+
+      <section class="block" id="build">
+        <div class="sec-head"><span class="num">09</span><h2>Build and start</h2></div>
+        <div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>docker compose -f docker/docker-compose.yml up -d --build</code></pre></div>
+        <p>Give it a minute, then confirm every service is genuinely healthy, not just running:</p>
+        <div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>docker compose -f docker/docker-compose.yml ps</code></pre></div>
+        <p>Every row should show <code class="inline">(healthy)</code>, not just <code class="inline">Up</code> &mdash; those aren't the same thing.</p>
+        <div class="callout"><strong>Local dev, for reference:</strong> a gitignored <code class="inline">docker-compose.override.yml</code> restores dev-only host ports on a laptop. Since this project always invokes Compose with an explicit <code class="inline">-f</code>, Compose's automatic override discovery doesn't apply &mdash; local dev needs it passed explicitly: <code class="inline">docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml up</code>. The VM never has this file at all.</div>
+      </section>
+
+      <section class="block" id="migrate">
+        <div class="sec-head"><span class="num">10</span><h2>Run the database migration, seed the first admin</h2></div>
+        <p>The running <code class="inline">backend</code> container intentionally doesn't have the Prisma CLI (stripped from the production image to keep it small) &mdash; build a one-off image from the earlier build stage instead:</p>
+        <div class="code-block"><div class="code-tab"><span>on the VM</span></div><pre><code>docker build --target build -f docker/backend.Dockerfile -t roshai-migrate .</code></pre></div>
+        <div class="gotcha"><span class="g-label">The network name isn't your folder name</span><p>It comes from the <code class="inline">name:</code> field at the top of <code class="inline">docker-compose.yml</code> (e.g. <code class="inline">roshai-control-tower</code>), regardless of what the repo folder you cloned into is actually called. Confirm with <code class="inline">docker network ls</code> if the next commands say "network not found."</p></div>
+        <div class="code-block"><div class="code-tab"><span>on the VM &mdash; migrate</span></div><pre><code>docker <span class="c-key">run</span> --rm --network roshai-control-tower_default --env-file docker/.env roshai-migrate <span class="c-key">sh</span> -c <span class="c-str">"cd backend && npx prisma migrate deploy"</span></code></pre></div>
+        <div class="code-block"><div class="code-tab"><span>on the VM &mdash; seed the first admin</span></div><pre><code>docker <span class="c-key">run</span> --rm --network roshai-control-tower_default --env-file docker/.env roshai-migrate <span class="c-key">sh</span> -c <span class="c-str">"cd backend && npx prisma db seed"</span></code></pre></div>
+        <div class="gotcha"><span class="g-label">Watch for a truncated command</span><p>A pasted multi-line command that gets cut off mid-string (an open quote never closed) leaves the shell silently waiting for more input &mdash; it looks like nothing happened. <code class="inline">Ctrl+C</code> to cancel, then re-paste the complete command on one line.</p></div>
+        <p>If <code class="inline">backend</code> was unhealthy before this, it should recover within a healthcheck cycle or two once the tables exist. Force it if not: <code class="inline">docker compose -f docker/docker-compose.yml restart backend</code>.</p>
+      </section>
+
+      <section class="block" id="verify">
+        <div class="sec-head"><span class="num">11</span><h2>Verify</h2></div>
+        <ul class="checklist">
+          <li>Tailscale admin console shows the VM as a connected device, under the name you expected.</li>
+          <li>From a device on the tailnet, the app loads at <code class="inline">https://&lt;TS_HOSTNAME&gt;.&lt;TS_TAILNET_DOMAIN&gt;</code>.</li>
+          <li>Log in with the seeded admin email/password.</li>
+          <li>Trigger a test e-stop and confirm it's recorded in the audit log.</li>
+          <li>From a device <em>off</em> the tailnet, the NSG check from Section 02 still shows only port 22 open.</li>
+        </ul>
+      </section>
+
+      <section class="block" id="bot">
+        <div class="sec-head"><span class="num">12</span><h2>Hand off to the bot team</h2></div>
+        <p>Once the VM is confirmed working, they need exactly two values and one pipeline setting:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>What</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>MQTT broker</td><td><code class="inline">wss://&lt;TS_HOSTNAME&gt;.&lt;TS_TAILNET_DOMAIN&gt;/mqtt</code></td></tr>
+              <tr><td>RTSP ingest base</td><td>The <code class="inline">VIDEO_RTSP_BASE_URL</code> value from <code class="inline">docker/.env</code></td></tr>
+              <tr><td>GStreamer pipeline flag</td><td><code class="inline">protocols=tcp</code> on <code class="inline">rtspclientsink</code> &mdash; UDP RTP media was found to drop after ~10s over the tailnet</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="gotcha"><span class="g-label">Nothing switches over automatically</span><p>If this VM is replacing an earlier deployment (a laptop, a different VM), the bot keeps talking to whatever it's currently configured for until someone on the bot team explicitly repoints it. The two deployments run as fully independent systems with separate databases in the meantime &mdash; confirm the cutover with them directly rather than assuming it happened.</p></div>
+      </section>
+
+      <section class="block" id="troubleshoot">
+        <div class="sec-head"><span class="num">13</span><h2>Quick-reference troubleshooting</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+            <tbody>
+              <tr><td>A Linux command throws a Windows-style error (e.g. "option requires an argument")</td><td>Typed into local PowerShell instead of the VM's shell</td><td>Check the prompt; reconnect if the SSH session timed out</td></tr>
+              <tr><td><code class="inline">sudo</code> asks for a password that doesn't work</td><td>No password was ever set for this account (key-only auth)</td><td>Reset it via the cloud console's password-reset feature</td></tr>
+              <tr><td><code class="inline">git fetch</code>/<code class="inline">push</code> says "repository not found"</td><td>Stale cached credential for a different account/org</td><td>Clear the saved credential (Windows Credential Manager) and re-authenticate</td></tr>
+              <tr><td>Prisma <code class="inline">P1000</code> "credentials not valid"</td><td>Duplicate/mismatched <code class="inline">DATABASE_URL</code>, or a base64 password with an unescaped special character</td><td>Check for duplicate lines; regenerate the password with <code class="inline">-hex</code></td></tr>
+              <tr><td><code class="inline">tailscale cert</code> fails: "invalid domain"</td><td>Configured hostname doesn't match the tailnet's auto-suffixed actual name</td><td>Set <code class="inline">TS_HOSTNAME</code> to the real registered name, or pick a unique one</td></tr>
+              <tr><td>Video: signaling succeeds, nothing plays</td><td>Tailscale in userspace-networking mode</td><td>Section 08's three-part fix</td></tr>
+              <tr><td>Whole app suddenly "refused to connect"</td><td><code class="inline">tailscale</code> recreated without its three network-sharing dependents</td><td>Recreate all four together (Section 08)</td></tr>
+              <tr><td>An edited <code class="inline">.env</code> value doesn't seem to take effect</td><td>Container was <code class="inline">restart</code>ed, not recreated &mdash; env vars are baked in at creation</td><td><code class="inline">docker compose up -d</code> again to force a recreate of the changed service</td></tr>
+              <tr><td>Postgres still rejects a password you just changed</td><td>Postgres only applies <code class="inline">POSTGRES_PASSWORD</code> on first-ever init of an empty database</td><td><code class="inline">docker compose down</code>, remove the <code class="inline">pgdata</code> volume, <code class="inline">up -d</code> again (only safe pre-launch, with no real data yet)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>RoshAI Control Tower &middot; internal ops runbook &middot; every issue listed here was hit during the first real rollout, not hypothetical</footer>
+
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+    var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+    function onScroll() {
+      var pos = window.scrollY + 120;
+      var activeIndex = 0;
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i] && sections[i].offsetTop <= pos) activeIndex = i;
+      }
+      links.forEach(function (a, i) { a.classList.toggle('active', i === activeIndex); });
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+</script>

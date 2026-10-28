@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
+// Dual auth: email+password (this table) and OIDC (Entra ID today,
+// swappable per CLAUDE.md "Auth") both create sessions the same way — see
+// auth-route.ts and auth-oidc-route.ts. passwordHash is nullable because
+// OIDC-provisioned users have none; oidcSubject stores the standard OIDC
+// `sub` claim (not an Entra-specific id) so a future IdP swap re-links
+// existing users by email instead of duplicating them. role is always
+// DB-driven, never read from an OIDC token — see the Role Management UI
+// (admin-users-route.ts) for how it's changed. failedLoginAttempts/
+// lockedUntil implement per-account lockout alongside per-IP rate
+// limiting at the route level, for the password path only.
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  name                String?
+  passwordHash        String?
+  oidcSubject         String?   @unique
+  role                Role      @default(OPERATOR)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+// Minimal vehicle registry — VIN is the natural key already referenced
+// throughout (MQTT topics, uploads). No telemetry/session fields here;
+// that's a later phase, once MQTT ingestion persists what it decodes.
+model Vehicle {
+  id              String           @id @default(uuid())
+  vin             String           @unique
+  name            String?
+  createdAt       DateTime         @default(now())
+  testConnections TestConnection[]
+}
+
+// The only persistent record of a test connection in this phase — no bot
+// session/telemetry/stop-event data. Just enough to attach a driver
+// comment and the final report PDF's storage path to a specific vehicle
+// run. Deliberately not named "Session" — that term is reserved for the
+// MQTT bot-session concept this table is explicitly not tracking yet.
+model TestConnection {
+  id            String   @id @default(uuid())
+  vehicleId     String
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id])
+  driverComment String?
+  pdfPath       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([vehicleId])
+}
+
+// Durable compliance record — CLAUDE.md's Security Baseline explicitly
+// requires "Audit log for every stop event and admin action," as its own
+// append-only table, distinct from ordinary operational (pino) logs.
+// First user: the admin-issued e-stop command. `vin` is a plain string,
+// not a Vehicle relation — the live vehicle registry is deliberately
+// in-memory (see backend/src/lib/vehicle-registry.ts), so there may be no
+// corresponding Vehicle row; an audit record must stand on its own
+// regardless of other tables' state.
+// Second user (Aug 2026): Role Management UI role changes. Neither `vin`
+// nor `targetEmail` is required together — each admin-action kind
+// populates only the subject column that applies to it (vin for e-stop,
+// targetEmail for role changes) rather than overloading one column's
+// meaning across unrelated action kinds.
+model AdminActionAudit {
+  id          String   @id @default(uuid())
+  vin         String?
+  targetEmail String?
+  action      String
+  issuedBy    String
+  issuedAt    DateTime @default(now())
+
+  @@index([vin])
+  @@index([issuedAt])
+}
+
+// Durable record of a completed bot test session, written once a session
+// transitions to 'ended' — independent of the in-memory live grid
+// (backend/src/lib/vehicle-registry.ts). Exists so clearing a row from
+// the live grid, or a backend restart, never loses a session's
+// report-download path or metadata. The composite (vin, macId,
+// sessionId) below — not sessionId alone — is the upsert key both
+// writers in backend/src/lib/session-history.ts race on (see that file
+// for why): sessionId alone is a bot's own local counter, not globally
+// unique across different vehicles/bots.
+//
+// startedAt/endedAt are nullable, unlike a literal mirror of the
+// in-memory VehicleSession, because two independent async events
+// populate this row — session-end (which knows startedAt/endedAt/
+// stopCause) and report-upload (which knows only the report fields) —
+// and their arrival order isn't guaranteed (a bot can upload its report
+// before or after sending stop-event). Whichever fires first creates the
+// row with only its own fields known; the other fills in the rest via
+// upsert. The list query always filters to endedAt IS NOT NULL, so a
+// report-arrived-first transient partial row never appears in the
+// user-facing history list until the session genuinely ends.
+model VehicleSessionHistory {
+  id               String    @id @default(uuid())
+  vin              String
+  // Nullable at the column level only for the rare "detached report, no
+  // matching session found at all" write path (see attachReportToHistory
+  // in session-history.ts) — every session actually established via
+  // handshake always has a real macId (mqtt-client.ts rejects a
+  // session-start without one), so this column is populated in the
+  // overwhelming majority of rows. Kept nullable rather than forcing a
+  // sentinel value into a case that genuinely has no known macId.
+  macId            String?
+  sessionId        String
+  startedAt        DateTime?
+  endedAt          DateTime?
+  // Freeform, not an enum — same precedent as AdminActionAudit.action —
+  // so a future bot-team-added cause value never needs a migration.
+  stopCause        String?
+  // Report metadata only; the PDF bytes stay in MinIO
+  // (reports/{vin}/{macId}/{sessionId}/report.pdf).
+  reportSizeBytes  Int?
+  reportUploadedAt DateTime?
+  createdAt        DateTime  @default(now())
+
+  // sessionId alone is NOT globally unique — a bot's own session counter
+  // can repeat across different vehicles it's fitted to, and different
+  // bots fitted to the same vehicle can each report "session 1". The true
+  // identity for a real test run is this composite (matches
+  // vehicle-registry.ts's in-memory sessionKey). name/map pinned
+  // explicitly rather than left to Prisma's implicit defaults, so the
+  // generated Client key name and Postgres constraint name are stable.
+  @@unique([vin, macId, sessionId], name: "vin_macId_sessionId", map: "VehicleSessionHistory_vin_macId_sessionId_key")
+  @@index([vin])
+  @@index([endedAt])
+}

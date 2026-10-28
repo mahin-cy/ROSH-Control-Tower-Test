@@ -1,0 +1,818 @@
+<title>Control Tower Deployment Spec</title>
+<style>
+  :root{
+    --bg:#EEF1F3;
+    --surface:#FFFFFF;
+    --surface-alt:#E3E8EB;
+    --border:#CBD3D8;
+    --ink:#121922;
+    --ink-soft:#4E5861;
+    --ink-faint:#7C868F;
+    --accent:#1F5C73;
+    --accent-soft:#DCE9EC;
+    --good:#2F7D5C;
+    --good-soft:#DFEEE6;
+    --warn:#8A5A14;
+    --warn-soft:#F3E5CE;
+    --shadow:rgba(18,25,34,0.09);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10151B;
+      --surface:#171E26;
+      --surface-alt:#1C242D;
+      --border:#2C3742;
+      --ink:#E8EDEF;
+      --ink-soft:#A6B2BA;
+      --ink-faint:#76838C;
+      --accent:#7BC1D4;
+      --accent-soft:#1D3A42;
+      --good:#5FBE94;
+      --good-soft:#1B3A2E;
+      --warn:#E0A857;
+      --warn-soft:#3D2E14;
+      --shadow:rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10151B;
+    --surface:#171E26;
+    --surface-alt:#1C242D;
+    --border:#2C3742;
+    --ink:#E8EDEF;
+    --ink-soft:#A6B2BA;
+    --ink-faint:#76838C;
+    --accent:#7BC1D4;
+    --accent-soft:#1D3A42;
+    --good:#5FBE94;
+    --good-soft:#1B3A2E;
+    --warn:#E0A857;
+    --warn-soft:#3D2E14;
+    --shadow:rgba(0,0,0,0.4);
+  }
+
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:"Big Shoulders Display","Arial Narrow",sans-serif;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:0.01em;
+    text-wrap:balance;
+    color:var(--ink);
+    margin:0;
+  }
+  code, .mono{
+    font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+  }
+  a{color:var(--accent);}
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+  p{margin:0 0 1em 0;}
+  ul,ol{margin:0 0 1em 0;padding-left:1.25em;}
+  li{margin-bottom:0.45em;}
+
+  .page{
+    max-width:1180px;
+    margin:0 auto;
+    padding:clamp(20px,4vw,56px) clamp(16px,4vw,40px) 80px;
+  }
+
+  /* ---- Header ---- */
+  .doc-header{
+    border-bottom:1px solid var(--border);
+    padding-bottom:28px;
+    margin-bottom:36px;
+  }
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.72rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:flex;
+    align-items:center;
+    gap:0.6em;
+    margin-bottom:14px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:22px;height:1px;
+    background:var(--accent);
+    display:inline-block;
+  }
+  .doc-header h1{
+    font-size:clamp(2.1rem,4.4vw,3.4rem);
+    line-height:0.98;
+    margin-bottom:16px;
+  }
+  .doc-header .dek{
+    max-width:62ch;
+    font-size:1.05rem;
+    color:var(--ink-soft);
+  }
+  .meta-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 22px;
+    margin-top:20px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.78rem;
+    color:var(--ink-faint);
+  }
+  .meta-row span{white-space:nowrap;}
+
+  /* ---- Layout: sidebar + content ---- */
+  .layout{
+    display:grid;
+    grid-template-columns:200px minmax(0,1fr);
+    gap:48px;
+    align-items:start;
+  }
+  @media (max-width:840px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  nav.toc{
+    position:sticky;
+    top:24px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  @media (max-width:840px){
+    nav.toc{
+      position:static;
+      flex-direction:row;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:8px;
+      padding-bottom:20px;
+      border-bottom:1px solid var(--border);
+    }
+    nav.toc a{
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:6px 12px !important;
+    }
+  }
+  nav.toc a{
+    display:flex;
+    gap:10px;
+    align-items:baseline;
+    padding:7px 4px;
+    font-size:0.85rem;
+    color:var(--ink-soft);
+    text-decoration:none;
+    border-left:2px solid transparent;
+  }
+  @media (max-width:840px){ nav.toc a{border-left:none;} }
+  nav.toc a .n{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.72rem;
+    color:var(--ink-faint);
+  }
+  nav.toc a.active{
+    color:var(--ink);
+    font-weight:600;
+    border-left-color:var(--accent);
+    padding-left:12px;
+  }
+  nav.toc a.active .n{color:var(--accent);}
+  nav.toc a:hover{color:var(--ink);}
+
+  main{min-width:0;}
+
+  section{
+    padding-top:8px;
+    margin-bottom:56px;
+    scroll-margin-top:24px;
+  }
+  section > .sec-head{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    margin-bottom:18px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:12px;
+  }
+  section > .sec-head .num{
+    font-family:"IBM Plex Mono",monospace;
+    color:var(--accent);
+    font-size:1rem;
+  }
+  section > .sec-head h2{
+    font-size:clamp(1.35rem,2.6vw,1.85rem);
+  }
+  .prose{max-width:70ch;}
+  .prose p, .prose li{color:var(--ink-soft);}
+  .prose strong{color:var(--ink);}
+
+  .lede{
+    max-width:74ch;
+    font-size:1rem;
+    color:var(--ink-soft);
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:16px 18px;
+    margin-bottom:24px;
+  }
+  .lede strong{color:var(--ink);}
+
+  /* ---- Component cards ---- */
+  .comp-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;
+  }
+  @media (max-width:680px){ .comp-grid{grid-template-columns:1fr;} }
+  .comp-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:3px solid var(--good);
+    border-radius:6px;
+    padding:16px 18px;
+  }
+  .comp-card.flag{border-left-color:var(--warn);}
+  .comp-card .row1{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .comp-card h3{
+    font-family:"IBM Plex Sans",sans-serif;
+    font-weight:700;
+    text-transform:none;
+    letter-spacing:0;
+    font-size:1rem;
+  }
+  .tag{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.72rem;
+    color:var(--ink-faint);
+    white-space:nowrap;
+  }
+  .status{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.7rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:2px 8px 2px 6px;
+    border-radius:999px;
+    background:var(--good-soft);
+    color:var(--good);
+    margin-bottom:8px;
+  }
+  .comp-card.flag .status{background:var(--warn-soft);color:var(--warn);}
+  .status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .comp-card p{font-size:0.9rem;color:var(--ink-soft);margin-bottom:0.5em;}
+  .comp-card p:last-child{margin-bottom:0;}
+  .comp-card .footprint{color:var(--ink-faint);font-size:0.82rem;margin-bottom:8px;}
+
+  /* ---- Scenario spec panels ---- */
+  .scenario-panels{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:16px;
+    margin-bottom:22px;
+  }
+  @media (max-width:700px){ .scenario-panels{grid-template-columns:1fr;} }
+  .scenario-panels.tiers{grid-template-columns:1fr 1fr 1fr;}
+  @media (max-width:980px){ .scenario-panels.tiers{grid-template-columns:1fr;} }
+  .panel.tertiary{border-style:dashed;opacity:0.92;}
+  .panel.tertiary .panel-label{color:var(--warn);}
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:20px 22px;
+  }
+  .panel.primary{border-color:var(--accent);box-shadow:0 1px 0 var(--shadow);}
+  .panel.secondary{border-style:dashed;}
+  .panel .panel-label{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.72rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:12px;
+  }
+  .panel.secondary .panel-label{color:var(--ink-faint);}
+  .spec-grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:12px;
+    margin-bottom:14px;
+  }
+  @media (max-width:520px){ .spec-grid{grid-template-columns:repeat(2,1fr);} }
+  .spec{display:flex;flex-direction:column;gap:2px;}
+  .spec .k{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-faint);}
+  .spec .v{
+    font-family:"IBM Plex Mono",monospace;
+    font-variant-numeric:tabular-nums;
+    font-size:1.15rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .panel .note-list{list-style:none;padding:0;margin:12px 0 0 0;}
+  .panel .note-list li{
+    font-size:0.87rem;
+    color:var(--ink-soft);
+    padding-left:1em;
+    position:relative;
+    margin-bottom:6px;
+  }
+  .panel .note-list li::before{
+    content:"–";
+    position:absolute;left:0;color:var(--ink-faint);
+  }
+
+  .callout{
+    background:var(--accent-soft);
+    border-radius:6px;
+    padding:14px 18px;
+    font-size:0.92rem;
+    color:var(--ink);
+    margin-bottom:20px;
+  }
+  .callout strong{color:var(--accent);}
+
+  /* ---- scale-check list ---- */
+  .check-list{display:flex;flex-direction:column;gap:10px;}
+  .check-item{
+    display:grid;
+    grid-template-columns:150px 90px 1fr;
+    gap:14px;
+    align-items:start;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:12px 16px;
+  }
+  @media (max-width:640px){
+    .check-item{grid-template-columns:1fr;gap:6px;}
+  }
+  .check-item .comp-name{font-weight:600;font-size:0.92rem;}
+  .check-item .verdict-chip{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.68rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:3px 8px;
+    border-radius:4px;
+    background:var(--good-soft);
+    color:var(--good);
+    justify-self:start;
+    white-space:nowrap;
+  }
+  .check-item.flag .verdict-chip{background:var(--warn-soft);color:var(--warn);}
+  .check-item p{font-size:0.88rem;color:var(--ink-soft);margin:0;}
+
+  /* ---- Option A/B cards ---- */
+  .option-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  @media (max-width:700px){ .option-grid{grid-template-columns:1fr;} }
+  .option-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:18px 20px;
+  }
+  .option-card h3{
+    font-family:"IBM Plex Sans",sans-serif;
+    text-transform:none;letter-spacing:0;
+    font-size:1.02rem;
+    margin-bottom:10px;
+  }
+  .option-card ul{padding-left:1.1em;margin-bottom:0;}
+  .option-card li{font-size:0.88rem;color:var(--ink-soft);}
+
+  /* ---- Verdict plates ---- */
+  .verdict{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:4px solid var(--accent);
+    border-radius:8px;
+    padding:22px 24px;
+    margin-bottom:20px;
+  }
+  .verdict .v-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .verdict .v-head h3{
+    font-family:"IBM Plex Sans",sans-serif;
+    text-transform:none;letter-spacing:0;
+    font-size:1.15rem;
+  }
+  .verdict .v-spec{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.82rem;
+    font-variant-numeric:tabular-nums;
+    color:var(--accent);
+  }
+  .verdict p{color:var(--ink-soft);font-size:0.94rem;margin-bottom:0;}
+  .verdict p strong{color:var(--ink);}
+
+  .open-input{
+    border:1px dashed var(--border);
+    border-radius:6px;
+    padding:14px 18px;
+    font-size:0.88rem;
+    color:var(--ink-soft);
+  }
+  .open-input .k{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.68rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    display:block;
+    margin-bottom:6px;
+  }
+
+  hr.rule{border:none;border-top:1px solid var(--border);margin:0 0 56px 0;}
+
+  footer{
+    margin-top:40px;
+    padding-top:20px;
+    border-top:1px solid var(--border);
+    font-size:0.78rem;
+    color:var(--ink-faint);
+  }
+  footer ul{list-style:none;padding:0;margin:8px 0 0 0;display:flex;flex-direction:column;gap:4px;}
+  footer a{color:var(--ink-faint);text-decoration:underline;}
+  footer a:hover{color:var(--accent);}
+
+  @media (prefers-reduced-motion: no-preference){
+    html{scroll-behavior:smooth;}
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="page">
+
+  <header class="doc-header">
+    <div class="eyebrow">Infrastructure Brief</div>
+    <h1>Control Tower<br>Deployment Spec</h1>
+    <p class="dek">Component sizing, licensing, and hosting recommendations for the RoshAI Control Tower — covering today's single-bot pilot and the multi-bot fleet rollout it needs to grow into.</p>
+    <div class="meta-row">
+      <span>Prepared Sept 2026</span>
+      <span>Two scenarios: pilot &amp; fleet</span>
+      <span>Licensing facts independently verified</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Sections">
+      <a href="#sec-1"><span class="n">01</span> Components</a>
+      <a href="#sec-2"><span class="n">02</span> Pilot sizing</a>
+      <a href="#sec-3"><span class="n">03</span> Fleet sizing</a>
+      <a href="#sec-4"><span class="n">04</span> Scaling check</a>
+      <a href="#sec-5"><span class="n">05</span> Cloud options</a>
+      <a href="#sec-6"><span class="n">06</span> Host OS</a>
+      <a href="#sec-7"><span class="n">07</span> Verdict</a>
+    </nav>
+
+    <main>
+
+      <section id="sec-1">
+        <div class="sec-head"><span class="num">01</span><h2>Component profile</h2></div>
+        <p class="lede">Every service in the current stack, sized and license-checked against how it's actually used here — not against generic best-case footprints. Two components (marked below) carry a licensing detail worth acting on before this scales into a client-facing production system.</p>
+
+        <div class="comp-grid">
+
+          <div class="comp-card">
+            <div class="row1"><h3>Postgres</h3><span class="tag">postgres:16-alpine</span></div>
+            <span class="status">Clear</span>
+            <p class="footprint">Light today; grows with audit-log retention.</p>
+            <p><strong>PostgreSQL License</strong> — fully permissive, no restriction on commercial or client use.</p>
+            <p>Fine as-is. Add a retention/partitioning plan before the fleet scenario (§3).</p>
+          </div>
+
+          <div class="comp-card">
+            <div class="row1"><h3>Redis</h3><span class="tag">redis:7-alpine</span></div>
+            <span class="status">Clear</span>
+            <p class="footprint">Trivial — holds only operator login sessions (~150 bytes, 8h TTL) and OIDC login flow state (5min TTL, single-use). Telemetry is deliberately kept out of Redis entirely, to avoid a round-trip on high-frequency bot messages — so this footprint doesn't grow with bot count, vehicle count, or concurrent sessions in phase 2.</p>
+            <p>The <code>7-alpine</code> tag now resolves to <strong>Redis 7.4.11</strong> (RSALv2 / SSPLv1, not the BSD license that tag implied pre-2024) — but that license targets reselling Redis as a hosted service to third parties, which is nowhere near what this does. Practically a non-issue as used here.</p>
+            <p>Optional housekeeping: <code>valkey/valkey:7-alpine</code> is a zero-cost, protocol-compatible BSD-3-Clause swap, and matches where Ubuntu/Debian/Alpine packaging is already heading — worth doing, but not fixing a real risk.</p>
+          </div>
+
+          <div class="comp-card flag">
+            <div class="row1"><h3>MinIO</h3><span class="tag">minio/minio:latest</span></div>
+            <span class="status">Flag — act on this soon</span>
+            <p class="footprint">Light at pilot scale; grows with media volume.</p>
+            <p><strong>AGPLv3 — but the license itself is not the real issue.</strong> AGPL's network-copyleft clause triggers on modifying the source and exposing that modified version to outside users directly; this backend runs it unmodified, purely as internal infrastructure, and end users never touch MinIO directly (all access is proxied through the backend). That's a well-established, low-risk way to run AGPL software — the earlier framing overstated this.</p>
+            <p><strong>The real, concrete problem: the upstream project is dead.</strong> Verified directly against GitHub and Docker Hub (not just secondary sources): MinIO Inc. froze the official <code>minio/minio</code> Docker image at <code>RELEASE.2025-09-07</code> — it will never receive another update — and archived the GitHub repository entirely on <strong>April 25, 2026</strong> ("THIS REPOSITORY IS NO LONGER MAINTAINED"), redirecting users to the commercial AIStor product. A high-severity (CVSS 8.1) privilege-escalation bug, <a href="https://github.com/advisories/GHSA-jjjj-jwhf-8rgr" target="_blank" rel="noopener">CVE-2025-62506</a>, was patched only in a source-only release (its own notes tell users to clone and build the container themselves) — so this exact tag is permanently unpatched against it, and will be against every future finding too.</p>
+            <p>That specific CVE needs a restricted service-account/STS token to exploit, and this backend currently authenticates with MinIO's root credential — so today's setup happens not to be exposed to <em>this one</em>. That's incidental, not a fix: an abandoned image with zero future patches is a standing risk regardless of which CVE lands next. <strong>Recommend migrating off this image soon, independent of pilot-vs-fleet scale</strong> — either to an actively maintained community fork (e.g. <code>pgsty/minio</code>, ~1.8k GitHub stars, still shipping releases as of mid-2026) as a stopgap, or straight to real cloud object storage (S3/Blob/GCS) per §5, which the backend can adopt with minimal code change since it already speaks the S3 API.</p>
+          </div>
+
+          <div class="comp-card">
+            <div class="row1"><h3>Mosquitto</h3><span class="tag">eclipse-mosquitto:2</span></div>
+            <span class="status">Clear</span>
+            <p class="footprint">Very light — edge-class footprint.</p>
+            <p><strong>EPL 2.0 / EDL 1.0</strong> dual license — permissive. Already the reason this was chosen over EMQX, which moved to a restrictive BSL.</p>
+            <p>Fine as-is at both scenario sizes.</p>
+          </div>
+
+          <div class="comp-card">
+            <div class="row1"><h3>MediaMTX</h3><span class="tag">mediamtx:latest-ffmpeg</span></div>
+            <span class="status">Clear</span>
+            <p class="footprint">CPU/bandwidth scale per concurrent stream.</p>
+            <p><strong>MIT</strong> — no concern.</p>
+            <p>The ffmpeg-bundled tag implies transcode capability; if only relaying WebRTC without transcoding, the plain <code>mediamtx</code> tag is smaller.</p>
+          </div>
+
+          <div class="comp-card">
+            <div class="row1"><h3>Traefik</h3><span class="tag">traefik:v3.7</span></div>
+            <span class="status">Clear</span>
+            <p class="footprint">Light.</p>
+            <p><strong>MIT</strong> — no concern. Fine as-is.</p>
+          </div>
+
+          <div class="comp-card">
+            <div class="row1"><h3>Tailscale</h3><span class="tag">tailscale/tailscale</span></div>
+            <span class="status">Clear</span>
+            <p class="footprint">Light sidecar.</p>
+            <p>Client (<code>tailscaled</code>) is BSD-3-Clause; the coordination control plane is a separate commercial hosted service.</p>
+            <p><strong>Free plan (2026):</strong> 6 users, unlimited user devices, but capped at 50 <em>tagged/infra</em> resources and 1,000 ephemeral-resource-minutes/month. Bots and VMs count as tagged resources, not user devices — a pilot is nowhere near the cap, but the confirmed 30-bot fleet (§3) plus its VM(s) sits close enough to that cap to plan around now, not later.</p>
+          </div>
+
+          <div class="comp-card">
+            <div class="row1"><h3>Backend / Frontend</h3><span class="tag">node:22-alpine</span></div>
+            <span class="status">Clear</span>
+            <p class="footprint">Light.</p>
+            <p>Own code, MIT-equivalent. No concerns.</p>
+          </div>
+
+        </div>
+
+        <div class="verdict" style="margin-top:22px;">
+          <div class="v-head">
+            <h3>Verdict: does MinIO need to change?</h3>
+            <span class="v-spec">Not urgent today → real risk, act on your own timeline</span>
+          </div>
+          <p style="margin-bottom:10px;">Yes, but it's not an emergency. Nothing is being actively exploited, and the one known CVE found doesn't even apply to this setup today — it needs a restricted service-account token to trigger, and this backend authenticates with MinIO's root credential. So there's no incident to react to right now.</p>
+          <p style="margin-bottom:10px;">What makes it a real "needs to change" rather than a "nice to have": the upstream project is <strong>abandoned</strong> — verified directly against GitHub and Docker Hub, not just a secondary source. MinIO Inc. froze the official Docker image at <code>RELEASE.2025-09-07</code> and archived the GitHub repo on April 25, 2026. That means zero security patches, for anything, ever again, on this exact image. The gap between "what's patched" and "what's found" only grows from here.</p>
+          <p style="margin-bottom:10px;"><strong>Does running it inside an isolated VM actually change that?</strong> Meaningfully, yes — but it doesn't remove the risk, it changes its shape. MinIO's port is never exposed to the public internet or even to Traefik here; only the backend, inside the same Docker network, can reach it, so an outside attacker with no existing foothold can't touch it directly. That's real and worth crediting. What it doesn't cover:</p>
+          <ul class="note-list" style="margin-top:0;margin-bottom:10px;">
+            <li><strong>Defense-in-depth:</strong> the isolation only holds if nothing else is ever compromised. If an attacker gets any foothold inside the network — a different vulnerability, a leaked credential, a compromised backend dependency — an unpatched MinIO stops being a second wall and becomes the easiest thing to fully compromise once they're in. It's specifically the component holding every stored report and media file.</li>
+            <li><strong>Future CVEs, not just this one:</strong> today's specific bug happens not to apply because of the root-credential setup — that's incidental, and the next one might not care. An abandoned image accumulates unpatched vulnerabilities indefinitely, including in its base OS layer, not just MinIO's own code.</li>
+            <li><strong>Vendor/compliance posture:</strong> independent of technical exploitability, "running an archived, unmaintained project with a known unpatched CVSS 8.1 CVE" is the kind of finding a client security review or questionnaire flags on its own.</li>
+          </ul>
+          <p style="margin-bottom:0;"><strong>Net: genuinely not urgent given the isolation, but cheap to fix and only gets riskier the longer it's left — worth doing on a relaxed timeline. Two paths, either works:</strong></p>
+          <ul class="note-list" style="margin-top:8px;">
+            <li><strong>Cheaper, near-term:</strong> swap the image tag to an actively maintained community fork (e.g. <code>pgsty/minio</code>) — same S3 API, no application code changes.</li>
+            <li><strong>Better, long-term:</strong> move to real cloud object storage (S3/Blob/GCS, §5) — a small, contained backend change since the app already speaks the S3 API, and it solves the fleet-scale retention/backup work (§3) at the same time. The stronger choice if cloud hosting is the direction anyway, since it avoids fixing a dying dependency twice.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="sec-2">
+        <div class="sec-head"><span class="num">02</span><h2>Pilot — one bot, one vehicle</h2></div>
+        <p class="lede">Scope: PDF reports under 5&nbsp;MB and one live video stream. Every service in §1 is lightweight at this scale, so the sizing question here is really "cloud VM, on-prem VM, or a laptop" — checked below.</p>
+
+        <div class="scenario-panels tiers">
+          <div class="panel primary">
+            <div class="panel-label">1 · Recommended — small cloud VM</div>
+            <div class="spec-grid">
+              <div class="spec"><span class="k">vCPU</span><span class="v">2</span></div>
+              <div class="spec"><span class="k">RAM</span><span class="v">4–8 GB</span></div>
+              <div class="spec"><span class="k">Disk</span><span class="v">60–100 GB</span></div>
+              <div class="spec"><span class="k">Cost</span><span class="v">$25–50/mo</span></div>
+            </div>
+            <ul class="note-list">
+              <li>e.g. AWS t3.medium/large, Azure B2s/B2ms, or a 4–8&nbsp;GB DigitalOcean/Linode droplet — one WebRTC stream needs no serious CPU unless MediaMTX is actively transcoding.</li>
+              <li>Pick the region physically nearest the client site, and run a real <code>tailscale ping</code> test from that site before committing — that's what determines whether the extra network hop matters for the safety-critical MQTT e-stop path.</li>
+              <li>Ubuntu 22.04/24.04 LTS, Docker Engine + Compose plugin (see §6 on why not Windows/WSL2 — no Docker Desktop, no licensing question at all).</li>
+            </ul>
+          </div>
+          <div class="panel secondary">
+            <div class="panel-label">2 · Secondary — client-hosted on-prem VM</div>
+            <div class="spec-grid">
+              <div class="spec"><span class="k">vCPU</span><span class="v">2</span></div>
+              <div class="spec"><span class="k">RAM</span><span class="v">4–8 GB</span></div>
+              <div class="spec"><span class="k">Disk</span><span class="v">60–100 GB</span></div>
+              <div class="spec"><span class="k">Cost</span><span class="v">Hardware only</span></div>
+            </div>
+            <ul class="note-list">
+              <li>A dedicated small box at the client site (mini-PC/NUC-class or small server) — same sizing as the cloud VM, but no recurring bill and everything stays on the client's premises.</li>
+              <li>Safer than the laptop tier: it's a dedicated, always-on machine, not something a person needs back for their own work or that drops the stack when the lid closes.</li>
+              <li>Still carries the on-prem tradeoffs cloud avoids: hardware failure has no automatic redundancy, patching/updates are now someone's manual job, and if the machine freezes up and becomes unreachable — even over Tailscale — there's no remote way in; someone has to be physically on-site to power-cycle it. Backups (Postgres dump + MinIO sync) need to be shipped off-site by hand, not a built-in feature.</li>
+              <li>Right call when the client wants the pilot's data to stay strictly on-premises, or simply prefers owning a physical box over a recurring cloud line item.</li>
+            </ul>
+          </div>
+          <div class="panel tertiary">
+            <div class="panel-label">3 · Last resort — employee's office laptop</div>
+            <p style="font-size:0.9rem;color:var(--ink-soft);margin-bottom:10px;">Workable only as a stated-temporary bridge before either option above is in place — not a real deployment tier, and worth putting the caveats below in writing so it's never mistaken for one.</p>
+            <ul class="note-list">
+              <li>Sleep/lid-close drops the whole stack; no redundancy; the laptop's owner can't take it home or reimage it without warning.</li>
+              <li>Needs Docker Desktop on Windows, which is free only if the client is <em>both</em> under 250 employees <em>and</em> under $10M in annual revenue — it's an AND, not an OR, so headcount alone doesn't confirm free eligibility. Worth checking the client's revenue too, or confirming directly against Docker's published terms, before assuming this costs nothing.</li>
+              <li>Set a date/trigger in writing for when this graduates to option 1 or 2 above.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lede" style="margin-top:4px;">
+          <p style="margin-bottom:10px;"><strong>Does cloud still win at one-bot scale? Yes</strong> — a smaller footprint doesn't weaken the case, it sharpens it.</p>
+          <ul style="margin-bottom:10px;">
+            <li>Cloud's advantages — managed hardware redundancy, automatic snapshots instead of a hand-rolled backup script, and a remote way in even if the machine itself freezes up and stops responding — are about <strong>who carries ongoing operational risk</strong>, not how many bots are being served. A dead disk or a frozen machine is exactly as disruptive with one bot as with fifteen.</li>
+            <li>The only thing that actually scales with bot count is <strong>cost</strong> — and at $25–50/month, there's essentially no self-hosting saving worth trading that risk for.</li>
+          </ul>
+          <p style="margin-bottom:0;">Tier 2 (on-prem VM) is a real, legitimate step up from the laptop tier — a dedicated always-on box is far more reliable than a shared laptop. But choosing it means deliberately taking on the hardware-failure, patching, and backup work that cloud would otherwise absorb — it's a tradeoff being made, not a free upgrade. Tier 3 (laptop) stays a last resort: fine as a stated-temporary bridge, never the pilot's real home.</p>
+        </div>
+      </section>
+
+      <section id="sec-3">
+        <div class="sec-head"><span class="num">03</span><h2>Fleet — multi-bot, multi-vehicle</h2></div>
+
+        <div class="callout"><strong>Confirmed inputs:</strong> <strong>30 bots/vehicles by the 6–12 month mark</strong> (firming up the earlier 15+ working figure), each pair running <strong>multiple test sessions per day</strong>; video remains on-demand only, not always-on per bot. Two things follow from this: video still isn't the dominant sizing driver (MediaMTX load tracks concurrent <em>viewers</em>, not fleet size or session count) — but doubling the fleet size and running several sessions per pair per day meaningfully raises sustained Postgres write volume, daily audit-log row count, and object-storage growth rate, all of which move faster than the earlier 15+ estimate assumed.</div>
+
+        <div class="scenario-panels" style="grid-template-columns:1fr;">
+          <div class="panel primary">
+            <div class="panel-label">Revised sizing for 30 bots × multiple sessions/day — load-test before locking in</div>
+            <div class="spec-grid">
+              <div class="spec"><span class="k">vCPU</span><span class="v">8–16</span></div>
+              <div class="spec"><span class="k">RAM</span><span class="v">24–32 GB</span></div>
+              <div class="spec"><span class="k">Disk</span><span class="v">Grows w/ usage</span></div>
+              <div class="spec"><span class="k">Tailscale</span><span class="v">Standard plan</span></div>
+            </div>
+            <ul class="note-list">
+              <li><strong>vCPU (6–12 → 8–16):</strong> raised for headroom, not because Mosquitto/Postgres are near their ceiling — a single Mosquitto instance handles thousands of connections and 30 concurrent bots is trivial for it. The extra headroom is for concurrent report/PDF generation, WebSocket fan-out to the dashboard when many bots run sessions at once, and the higher sustained (not peak) Postgres write rate from several sessions/day across 30 pairs rather than one.</li>
+              <li><strong>RAM (16–24 GB → 24–32 GB):</strong> Postgres benefits most — a faster-growing audit-log table (30 pairs × multiple sessions/day means several times the daily row count the earlier estimate assumed) needs more working-set room to keep query/report performance from degrading as the table grows between archival passes.</li>
+              <li><strong>Disk — now the sharpest planning risk, not a "someday" item:</strong> object storage (wav/jpg/pdf) and audit-log rows both grow directly with <em>sessions/day × 30 pairs</em>, not bot count alone. The concrete number needed from the client is <strong>average sessions per pair per day</strong> (right now specified only as "multiple") and <strong>average file size per session</strong> — multiply those by 30 and by the intended retention window and that's the real disk figure. Don't finalize a disk size without it.</li>
+              <li><strong>Tailscale:</strong> 30 confirmed bots plus the production VM(s) already sit close to the free tier's 50-tagged-resource cap, before counting any subnet routers, staging bots, or future growth past 30. At this fleet size, budget the paid Standard plan ($8/user/mo) — or a self-hosted Headscale control plane — into the proposal now; this is no longer a "watch for later" item.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="prose" style="color:var(--ink-faint);font-size:0.88rem;margin-bottom:28px;">Two numbers would turn this from a load-test starting point into a final spec: <strong>telemetry message rate per bot</strong> (frequency and payload size, sets Postgres/Mosquitto load) and <strong>average sessions per pair per day</strong> (sets disk growth rate). See the open item in §7.</p>
+
+        <div class="lede" style="max-width:none;">
+          <p style="margin-bottom:10px;"><strong>Storage growth model.</strong> Only PDF reports (≤5&nbsp;MB, capped in code today) actually exist yet — wav audio and jpg images are a fleet-scenario addition with no implementation to measure yet, so the figures below are an illustrative planning exercise, not a spec. The shape of the model is what matters: storage grows as <code>sessions/day × 30 pairs × avg. file size/session</code>, and retention policy decides how many days of that you're carrying at once.</p>
+          <div class="spec-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:14px;">
+            <div class="spec"><span class="k">Report (PDF, capped)</span><span class="v" style="font-size:1rem;">≤ 5 MB</span></div>
+            <div class="spec"><span class="k">Audio (WAV, illustrative)</span><span class="v" style="font-size:1rem;">~2 MB/min</span></div>
+            <div class="spec"><span class="k">Images (JPG, illustrative)</span><span class="v" style="font-size:1rem;">~1–3 MB each</span></div>
+          </div>
+          <p style="margin-bottom:10px;font-size:0.88rem;">Worked example only — <strong>get real numbers from the client before using this to size disk</strong>: a 10-minute WAV recording (~20&nbsp;MB) plus 5 JPG stills (~10&nbsp;MB) plus a report (~5&nbsp;MB) puts one session around <strong>~35&nbsp;MB</strong>. At an illustrative 3 sessions/pair/day, that's <code>3 × 30 × 35&nbsp;MB ≈ 3.2&nbsp;GB/day</code>, roughly <strong>~95&nbsp;GB/month</strong> and <strong>~1.1&nbsp;TB/year</strong> if nothing is ever archived. WAV duration is the single biggest lever in this model — a 30-minute session instead of 10 roughly triples the total.</p>
+          <p style="margin-bottom:0;font-size:0.88rem;"><strong>Retention, not just capacity, needs a decision before this ships:</strong> keep recent sessions (e.g. last 30–90 days) in normal ("hot") storage for fast access, then either delete or move older ones to a cheaper archive tier. Real cloud object storage (S3/Blob/GCS, §5) does this automatically via lifecycle policies; self-hosted MinIO needs a scheduled job to do the same thing by hand. Also worth a check with the client on whether their industry imposes a <em>minimum</em> retention period for test/audit records — that's a compliance question for them, not an engineering default to assume either way.</p>
+        </div>
+      </section>
+
+      <section id="sec-4">
+        <div class="sec-head"><span class="num">04</span><h2>Does the current stack scale to the fleet?</h2></div>
+        <p class="lede">Component by component:</p>
+        <div class="check-list">
+          <div class="check-item">
+            <span class="comp-name">Postgres</span><span class="verdict-chip">Scales</span>
+            <p>A single well-indexed instance handles tens of millions of audit-log rows without issue. The path forward — partition by date, add a read replica for reporting — is incremental, not a rearchitecture.</p>
+          </div>
+          <div class="check-item flag">
+            <span class="comp-name">MinIO</span><span class="verdict-chip">Flag</span>
+            <p>Capacity isn't the issue — the image itself is: upstream is archived and the official Docker image gets no further security patches (§1). This is worth fixing before the fleet scale-up regardless of the licensing question, by moving to a maintained fork or real cloud object storage (§5).</p>
+          </div>
+          <div class="check-item">
+            <span class="comp-name">Mosquitto</span><span class="verdict-chip">Scales</span>
+            <p>A single instance is documented to handle thousands of connections — comfortably above realistic multi-bot fleet sizes.</p>
+          </div>
+          <div class="check-item">
+            <span class="comp-name">MediaMTX</span><span class="verdict-chip">Scales</span>
+            <p>De-risked by the on-demand-only video model — load tracks concurrent viewers, not fleet size, so even at 30 bots this stays modest as long as simultaneous-watch count stays low. Worth a ceiling check with the client on how many operators would realistically watch at once across a 30-bot test day, but no longer the primary scaling driver.</p>
+          </div>
+          <div class="check-item">
+            <span class="comp-name">Redis</span><span class="verdict-chip">Scales</span>
+            <p>Trivially — it holds only operator login/OIDC state, never telemetry, so its memory footprint tracks concurrent human dashboard users, not bot count or session volume. Not a phase-2 sizing concern.</p>
+          </div>
+          <div class="check-item">
+            <span class="comp-name">Traefik / Tailscale</span><span class="verdict-chip">Scales</span>
+            <p>Traefik scales fine; Tailscale's tagged-resource cap is a plan/cost question, not a technical limit.</p>
+          </div>
+        </div>
+        <p class="prose" style="margin-top:16px;"><strong>Bottom line: the stack scales technically.</strong> The two things worth fixing before calling the fleet scenario production-ready are MinIO's abandoned-image risk and real video-concurrency numbers to size MediaMTX correctly — everything else is a normal vertical-scaling story.</p>
+      </section>
+
+      <section id="sec-5">
+        <div class="sec-head"><span class="num">05</span><h2>Cloud: single VM vs. decomposed services</h2></div>
+        <div class="option-grid">
+          <div class="option-card">
+            <h3>Option A — single VM, full Compose stack</h3>
+            <ul>
+              <li>Simplest to operate, cheapest at pilot scale — no code changes from what exists today.</li>
+              <li>At fleet scale, this VM becomes a single point of failure for the whole fleet, and MinIO's abandoned-image risk stays yours to carry regardless.</li>
+            </ul>
+          </div>
+          <div class="option-card">
+            <h3>Option B — decompose onto managed services</h3>
+            <ul>
+              <li><strong>Postgres → managed</strong> (RDS / Azure Database for PostgreSQL / Cloud SQL): removes backup/patching/HA burden, same wire protocol, no app changes.</li>
+              <li><strong>MinIO → real object storage</strong> (S3/Blob/GCS): resolves the abandoned-image/unpatched-CVE risk directly (§1), not just a licensing preference; small backend change since it already speaks the S3 API.</li>
+              <li><strong>Redis → managed</strong> (ElastiCache / Azure Cache, or managed Valkey): removes the SSPL question outright.</li>
+              <li><strong>Mosquitto / MediaMTX → stay self-hosted</strong> on the VM — lightweight, no licensing pressure, and a managed swap is a bigger migration for limited benefit at this scale.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><strong>Recommendation:</strong> Option A for the pilot — decomposing now is overhead with no payoff at one-bot scale. For the fleet scenario, decompose Postgres and object storage specifically (a partial Option B) — those two swaps resolve the two real risks found in §4, while Mosquitto/MediaMTX/backend/frontend stay on a VM still under direct control. <strong>One exception that applies at either scale:</strong> swap the MinIO image itself (§1) as soon as practical — that's a dead-upstream/security-patching problem, not a scale or licensing-preference decision, so it shouldn't wait for the fleet migration.</div>
+      </section>
+
+      <section id="sec-6">
+        <div class="sec-head"><span class="num">06</span><h2>Host OS: Linux vs. Windows + WSL2</h2></div>
+        <div class="prose">
+          <p><strong>Native Linux (Ubuntu 22.04/24.04 LTS or Debian 12) with Docker Engine — recommended.</strong></p>
+          <ul>
+            <li>Every image in the stack (<code>node:22-alpine</code>, <code>postgres:16-alpine</code>, etc.) is already a Linux container; WSL2 just inserts a second virtualization layer with no offsetting benefit.</li>
+            <li>Getting Docker running smoothly on Windows means Docker Desktop, which requires a paid subscription for larger companies (§2) and adds GUI/updater overhead a headless server doesn't need.</li>
+            <li>Native Linux + Docker Engine is the lighter, standard target for production Compose deployments.</li>
+            <li>The only reason to choose Windows + WSL2 is an explicit client IT/compliance mandate for Windows Server.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="sec-7">
+        <div class="sec-head"><span class="num">07</span><h2>Final verdict</h2></div>
+
+        <div class="verdict">
+          <div class="v-head">
+            <h3>Pilot — one bot, one vehicle</h3>
+            <span class="v-spec">2 vCPU · 4–8 GB · 60–100 GB · $25–50/mo</span>
+          </div>
+          <p>Small cloud VM, nearest region to the client site, Linux + Docker Engine, full stack as one Compose deployment (Option A). Use the office laptop only as a stated-temporary bridge if the VM budget isn't approved yet. <strong>Reasoning:</strong> every self-hosted component is well within its comfortable range at this scale, decomposing to managed services has no payoff yet, and a cloud VM removes the on-prem operational burden — hardware failure, patching, backup mechanics, no remote way to recover a frozen machine — without a meaningful latency cost once verified.</p>
+        </div>
+
+        <div class="verdict">
+          <div class="v-head">
+            <h3>Fleet — 30 bots, multiple sessions/day each, on-demand video</h3>
+            <span class="v-spec">8–16 vCPU · 24–32 GB · managed DB + storage</span>
+          </div>
+          <p>Cloud, with Postgres and object storage moved to managed services (RDS/Cloud SQL + S3/Blob) while Mosquitto, MediaMTX, backend, and frontend stay on a right-sized VM, plus budgeting the Tailscale Standard plan (or a Headscale decision) into the proposal now — not later. <strong>Reasoning:</strong> on-demand video still keeps the hardware bar well below a worst-case always-on estimate, but 30 confirmed bots each running several sessions a day raises sustained Postgres write volume and object-storage growth well past the earlier 15+ working estimate, which is why vCPU/RAM moved up from §3's original range. Postgres write throughput, disk growth rate, and MinIO's licensing trajectory are the three things actually worth resolving at this scale — a single self-hosted VM becomes a real single point of failure for a fleet this size, and managed DB/storage removes that along with the AGPL exposure.</p>
+        </div>
+
+        <div class="open-input">
+          <span class="k">Open input</span>
+          Two numbers would turn the fleet range above from a load-test starting point into a final spec: <strong>telemetry message rate per bot</strong> (frequency and payload size — sets Postgres/Mosquitto load) and <strong>average sessions per pair per day</strong> (currently only specified as "multiple" — sets the disk growth rate, which is now the sharpest open risk at 30 bots).
+        </div>
+      </section>
+
+      <hr class="rule">
+
+      <footer>
+        Licensing and vendor-status facts verified via web search, September 2026 — not assumed from training data, since this informs a client-facing spec.
+        <ul>
+          <li><a href="https://github.com/minio/minio" target="_blank" rel="noopener">MinIO — AGPLv3 license (GitHub)</a></li>
+          <li><a href="https://www.futuriom.com/articles/news/minio-faces-fallout-for-stripping-features-from-web-gui/2025/06" target="_blank" rel="noopener">MinIO Community Edition console removal, March 2025 (Futuriom)</a></li>
+          <li><a href="https://github.com/minio/minio" target="_blank" rel="noopener">MinIO repo archive notice, confirmed directly on GitHub: "no longer maintained," archived Apr 25 2026</a></li>
+          <li><a href="https://hub.docker.com/r/minio/minio/tags" target="_blank" rel="noopener">minio/minio Docker Hub tags, confirmed directly: frozen at RELEASE.2025-09-07</a></li>
+          <li><a href="https://github.com/advisories/GHSA-jjjj-jwhf-8rgr" target="_blank" rel="noopener">CVE-2025-62506 — MinIO privilege escalation, CVSS 8.1 (GitHub Advisory Database)</a></li>
+          <li><a href="https://github.com/docker-library/repo-info/blob/master/repos/redis/remote/7-alpine.md" target="_blank" rel="noopener">redis:7-alpine resolved version (docker-library/repo-info)</a></li>
+          <li><a href="https://dev.to/synsun/redis-vs-valkey-in-2026-what-the-license-fork-actually-changed-1kni" target="_blank" rel="noopener">Redis vs. Valkey licensing timeline (DEV Community)</a></li>
+          <li><a href="https://costbench.com/software/business-vpn/tailscale/" target="_blank" rel="noopener">Tailscale 2026 pricing tiers (CostBench)</a></li>
+          <li><a href="https://pbxscience.com/tailscale-overhauls-pricing-free-plan-now-supports-six-users-with-unlimited-devices/" target="_blank" rel="noopener">Tailscale free-plan limits update (PBX Science)</a></li>
+        </ul>
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  if(!('IntersectionObserver' in window)) return;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      var idx = sections.indexOf(entry.target);
+      if(idx === -1) return;
+      if(entry.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('active'); });
+        links[idx].classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+  sections.forEach(function(s){ if(s) io.observe(s); });
+})();
+</script>

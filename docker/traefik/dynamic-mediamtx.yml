@@ -1,0 +1,40 @@
+# Static route for MediaMTX's WHEP (browser playback) endpoint — see
+# docker-compose.yml's mediamtx service comment for why this exists as a
+# file-provider route instead of the usual `traefik.*` Docker labels
+# every other service uses. Short version: once MediaMTX shares the
+# tailscale container's network namespace (network_mode: service:tailscale,
+# decided Sep 2026), it has no network/IP of its own for Traefik's Docker
+# provider to auto-discover — so this route is defined explicitly instead,
+# pointing at 127.0.0.1:8889, which is valid specifically because Traefik
+# is on that same shared namespace too.
+#
+# Bot ingest (RTSP, port 8554) needs no route here at all — it's not HTTP,
+# so Traefik was never able to proxy it either way; the bot reaches
+# MediaMTX's RTSP port directly over the tailnet, same namespace-sharing
+# mechanism, no Traefik involvement.
+http:
+  routers:
+    mediamtx:
+      rule: 'PathPrefix(`/webrtc`)'
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - mediamtx-stripprefix
+      service: mediamtx
+
+  middlewares:
+    # MediaMTX has no concept of the /webrtc prefix — it expects requests
+    # at /<path>/whep directly — so strip it before proxying, unlike
+    # backend/frontend/mosquitto's routes which forward the prefix as-is
+    # because those apps expect it.
+    mediamtx-stripprefix:
+      stripPrefix:
+        prefixes:
+          - '/webrtc'
+
+  services:
+    mediamtx:
+      loadBalancer:
+        servers:
+          - url: 'http://127.0.0.1:8889'

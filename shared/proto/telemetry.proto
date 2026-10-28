@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package roshai.mqtt.v1;
+
+// Mirrors shared/src/mqtt/telemetry-payload.ts. Wired to a real protobuf
+// encode/decode path (see backend/src/lib/mqtt-client.ts,
+// tools/bot-simulator.ts), like every other bot message.
+//
+// Proposed, not yet confirmed with the bot team. Fixed topic, not
+// per-vehicle (see shared/src/mqtt/topics.ts's MQTT_TOPICS_INBOUND.
+// telemetry) — deliberately kept shared even with multi-vehicle support,
+// since many bots publishing to one topic causes no message-level
+// misattribution: the backend demuxes every message by this payload's own
+// vin_number, not by topic or publish ordering. vin_number carries
+// per-vehicle identity in the payload instead of the topic path, same
+// pattern as HandshakeRequest.
+// Whether this message's position fields are valid. Added so the bot can
+// keep publishing telemetry at 1Hz with no GPS fix (e.g. indoors) instead
+// of going silent — telemetry is also the backend's proof-of-life signal
+// (vehicle-registry.ts's stale-session watchdog marks a telemetry-silent
+// session lost-contact). An enum rather than a bool on purpose: a proto3
+// `bool gps_valid` would default to false, so every message from firmware
+// that predates this field would suddenly read as "no GPS". UNSPECIFIED
+// (field omitted) is therefore treated as FIX for backward compatibility.
+enum GpsStatus {
+  GPS_STATUS_UNSPECIFIED = 0;
+  GPS_STATUS_FIX = 1;
+  // latitude/longitude/altitude must be ignored (the bot sends 0).
+  GPS_STATUS_NO_FIX = 2;
+}
+
+message TelemetryPayload {
+  string vin_number = 1;
+  string timestamp = 2;
+  float speed_mps = 3;
+  float heading_deg = 4;
+
+  // double, not float — GPS coordinates need the extra precision.
+  double latitude = 5;
+  double longitude = 6;
+  float altitude = 7;
+
+  GpsStatus gps_status = 8;
+}

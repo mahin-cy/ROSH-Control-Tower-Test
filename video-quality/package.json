@@ -1,0 +1,22 @@
+{
+  "name": "video-quality",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test:quality": "playwright test webrtc-quality --project \"chromium-vehicle*\"",
+    "test:quality:seq": "playwright test webrtc-quality --project \"chromium-vehicle*\" --workers=1",
+    "test:vins": "playwright test webrtc-quality --project \"chromium-test-vin-*\"",
+    "test:vins:seq": "playwright test webrtc-quality --project \"chromium-test-vin-*\" --workers=1",
+    "report": "playwright show-report",
+    "report:html": "node generate-report.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5"
+  }
+}

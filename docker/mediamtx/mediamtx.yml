@@ -1,0 +1,84 @@
+# MediaMTX config for live video (Phase 2). See CLAUDE.md's "Live video"
+# Tech Stack entry and shared/proto/video.proto for the full contract.
+#
+# One path per vehicle, named by vin — the backend hands the bot
+# rtsp://<host>:8554/<vin> as its ingest URL (video-control-service.ts)
+# and the frontend reads /webrtc/<vin>/whep (use-vehicle-video.ts).
+#
+# Decided Sep 2026: bot ingest is RTSP, not WHIP — supersedes the original
+# WHIP-only design. Browser playback is UNCHANGED (still WHEP, over the
+# WebRTC listener below) — MediaMTX bridges the two independently, so this
+# only affects the bot -> MediaMTX leg. Reasoning — bot-team-confirmed,
+# not a proactive preference: the bot team reported their Jetson runs an
+# older Ubuntu version than assumed, whose bundled GStreamer predates
+# whipclientsink's GStreamer >=1.22 requirement — WHIP was never viable
+# against their real hardware once checked. RTSP push (rtspclientsink,
+# the ANNOUNCE/RECORD flow) is available on far older GStreamer builds
+# and is the de facto standard for IP/vendor camera SDKs, so it was the
+# direct substitute once WHIP was ruled out. Trade-offs accepted
+# knowingly: RTSP has no WebRTC-style built-in adaptive bitrate
+# (irrelevant here — SET_BITRATE over MQTT is the mechanism regardless of
+# ingest transport) and no mandatory encryption (mitigated by the
+# tailnet's own WireGuard encryption wrapping every hop anyway).
+#
+# TLS is NOT terminated here — Traefik already terminates TLS for the
+# whole stack and proxies the WHEP HTTP signaling to this service over the
+# internal Docker network in plain HTTP (see docker-compose.yml's mediamtx
+# router + stripprefix middleware), same pattern already used for
+# Mosquitto's WSS-via-Traefik. Two things do NOT go through Traefik at
+# all, each for a different reason — both need a directly reachable port,
+# see docker-compose.yml: the WebRTC media itself (RTP/RTCP over ICE,
+# UDP, after the WHEP handshake — Traefik can't forward this), and the
+# entire RTSP ingest listener below (not an HTTP-based protocol at all,
+# so Traefik's path-based routing doesn't apply to it either).
+
+# WHIP is no longer used at all (see the ingest decision above) — RTSP
+# replaces it as the only bot-ingest path. WebRTC stays on for WHEP
+# (browser playback). RTMP/HLS/SRT/MoQ remain off — MediaMTX enables all
+# of these by default, and only what's actually used here should stay on,
+# matching this project's "expose only the minimum" principle (CLAUDE.md
+# architecture doc Section 3).
+rtsp: yes
+rtspAddress: :8554
+rtmp: no
+hls: no
+srt: no
+moq: no
+
+# Browser playback (WHEP) only now — the bot no longer uses this listener
+# for ingest (see the RTSP decision above).
+webrtc: yes
+webrtcAddress: :8889
+webrtcEncryption: no
+
+# No STUN/TURN configured (webrtcICEServers2 left at its empty default):
+# bot, server, and operator devices all share one private Tailscale
+# tailnet with direct connectivity, so ICE's usual NAT-traversal need
+# doesn't apply here — revisit only if real connectivity issues surface
+# once real hardware is involved (flagged as a verification item in the
+# implementation plan, not a known blocker).
+#
+# webrtcAdditionalHosts is intentionally NOT set here — it needs the
+# deployment's actual tailnet hostname, so it's injected via the
+# MTX_WEBRTCADDITIONALHOSTS environment variable in docker-compose.yml
+# instead (MediaMTX overrides any config key via an MTX_<KEY> env var).
+# Without this, MediaMTX would default to advertising its own internal
+# Docker bridge IP as the ICE candidate, which nothing outside the
+# container can reach.
+
+# Lightweight control API — used only for the Docker HEALTHCHECK
+# (GET /v3/info) in docker-compose.yml, and for manual verification
+# (GET /v3/paths/list) during implementation. Not routed through Traefik;
+# only reachable on the internal Docker network or the dev-only published
+# port.
+api: yes
+apiAddress: :9997
+
+# Per-vin paths aren't known ahead of time, so accept any path name.
+# Note: once a `paths` section exists, MediaMTX rejects publishes to any
+# path NOT listed in it ("path '<x>' is not configured") — the earlier
+# fixed `AUTO:` entry therefore blocked the per-vin pushes outright.
+# No auth here, same no-auth model already accepted for the bot's other
+# channels (see CLAUDE.md "Bot identity & the no-auth decision").
+paths:
+  all_others:

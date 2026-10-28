@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package roshai.mqtt.v1;
+
+// Mirrors shared/src/mqtt/stop-event-payload.ts. Wired to a real protobuf
+// encode/decode path (see backend/src/lib/mqtt-client.ts,
+// tools/bot-simulator.ts) — the last of the five bot messages to move off
+// JSON+Zod, matching session.proto/heartbeat.proto/telemetry.proto/
+// command.proto.
+//
+// Published by the bot on the fixed robot/stop-event topic (see
+// shared/src/mqtt/topics.ts's MQTT_TOPICS_INBOUND) — fixed/shared, not
+// per-vehicle, since the backend demuxes by this payload's own vin_number
+// regardless of publisher count. Every "vehicle stopped" scenario
+// (operator e-stop, missed-heartbeat self-stop, or anything else) reports
+// through this one message — cause distinguishes which.
+//
+// timestamp_ms matches the epoch-milliseconds/int64 shape the bot team
+// confirmed for HeartbeatPayload.timestamp_ms — kept consistent across
+// our own messages rather than mixing that with an ISO-8601 string here.
+// Bot-team-confirmed (Sep 2026) — including the non-additive renumbering
+// below, which reassigns value 3 from UNKNOWN to the new ERROR cause and
+// moves UNKNOWN to 5; ERROR/MANUAL_SHUTDOWN are new causes added by the
+// bot team.
+enum StopEventCause {
+  STOP_EVENT_CAUSE_UNSPECIFIED = 0;
+  STOP_EVENT_CAUSE_OPERATOR = 1;
+  STOP_EVENT_CAUSE_NETWORK_LOSS = 2;
+  STOP_EVENT_CAUSE_ERROR = 3;
+  STOP_EVENT_CAUSE_MANUAL_SHUTDOWN = 4;
+  STOP_EVENT_CAUSE_UNKNOWN = 5;
+}
+
+message StopEventPayload {
+  string vin_number = 1;
+  int64 timestamp_ms = 2;
+  StopEventCause cause = 3;
+  string reason = 4;
+}

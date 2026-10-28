@@ -1,0 +1,888 @@
+<title>Video Streaming Contract</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F5F7F8;
+    --surface: #FFFFFF;
+    --surface-2: #EEF2F3;
+    --ink: #121C24;
+    --ink-muted: #56666F;
+    --ink-faint: #8598A1;
+    --line: #DCE4E7;
+    --line-strong: #C3CFD3;
+    --accent: #0C7C8C;
+    --accent-ink: #FFFFFF;
+    --accent-tint: #DDF0F1;
+    --code-bg: #0F1B22;
+    --code-ink: #D9E6EA;
+    --code-muted: #7C93A0;
+    --code-key: #7FC7CE;
+    --code-str: #E3B563;
+    --state-starting: #92600B;
+    --state-starting-bg: #FBEBCF;
+    --state-streaming: #187A50;
+    --state-streaming-bg: #DBF1E4;
+    --state-stopped: #566269;
+    --state-stopped-bg: #E7ECEE;
+    --state-error: #A93A24;
+    --state-error-bg: #FBE1DA;
+    --dir-out: #2E5AAC;
+    --dir-out-bg: #E1EAF9;
+    --dir-in: #6A3FA0;
+    --dir-in-bg: #EDE3F7;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B1418;
+      --surface: #101C22;
+      --surface-2: #16242B;
+      --ink: #E7EEF0;
+      --ink-muted: #94A7AF;
+      --ink-faint: #62747C;
+      --line: #22333B;
+      --line-strong: #2E4149;
+      --accent: #3FC3D0;
+      --accent-ink: #06181C;
+      --accent-tint: #14313570;
+      --code-bg: #0B1519;
+      --code-ink: #DCE8EA;
+      --code-muted: #7C93A0;
+      --code-key: #8FD6DC;
+      --code-str: #E9C57E;
+      --state-starting: #E7B24C;
+      --state-starting-bg: #3A2C0F;
+      --state-streaming: #4FDA9C;
+      --state-streaming-bg: #103826;
+      --state-stopped: #A6B3B9;
+      --state-stopped-bg: #24333A;
+      --state-error: #FF8065;
+      --state-error-bg: #3D1811;
+      --dir-out: #85AAF0;
+      --dir-out-bg: #17233B;
+      --dir-in: #C6A4EC;
+      --dir-in-bg: #241a37;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0B1418;
+    --surface: #101C22;
+    --surface-2: #16242B;
+    --ink: #E7EEF0;
+    --ink-muted: #94A7AF;
+    --ink-faint: #62747C;
+    --line: #22333B;
+    --line-strong: #2E4149;
+    --accent: #3FC3D0;
+    --accent-ink: #06181C;
+    --accent-tint: #14313570;
+    --code-bg: #0B1519;
+    --code-ink: #DCE8EA;
+    --code-muted: #7C93A0;
+    --code-key: #8FD6DC;
+    --code-str: #E9C57E;
+    --state-starting: #E7B24C;
+    --state-starting-bg: #3A2C0F;
+    --state-streaming: #4FDA9C;
+    --state-streaming-bg: #103826;
+    --state-stopped: #A6B3B9;
+    --state-stopped-bg: #24333A;
+    --state-error: #FF8065;
+    --state-error-bg: #3D1811;
+    --dir-out: #85AAF0;
+    --dir-out-bg: #17233B;
+    --dir-in: #C6A4EC;
+    --dir-in-bg: #241a37;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 15.5px;
+    line-height: 1.6;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, .toc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection { background: var(--accent-tint); }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  /* ---------- Header ---------- */
+
+  header.spec-head {
+    padding: 44px 0 30px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-tint);
+  }
+
+  h1.title {
+    font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+    font-weight: 700;
+    font-size: clamp(2.1rem, 4vw, 3rem);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 10px;
+  }
+
+  p.dek {
+    color: var(--ink-muted);
+    font-size: 1.05rem;
+    max-width: 62ch;
+    margin: 0 0 26px;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .meta-item .k {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .meta-item .v {
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .meta-item .v.status-proposed { color: var(--state-starting); }
+
+  /* ---------- Layout: TOC + content ---------- */
+
+  .layout {
+    display: grid;
+    grid-template-columns: 208px 1fr;
+    gap: 48px;
+    margin-top: 36px;
+    align-items: start;
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 8px;
+  }
+  nav.toc .toc-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  nav.toc a {
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 13.5px;
+    padding: 6px 0 6px 12px;
+    border-left: 2px solid var(--line);
+    transition: color .15s ease, border-color .15s ease;
+  }
+  nav.toc a:hover { color: var(--ink); border-left-color: var(--line-strong); }
+  nav.toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+
+  main { min-width: 0; }
+
+  section.block {
+    padding: 40px 0;
+    border-bottom: 1px solid var(--line);
+    scroll-margin-top: 20px;
+  }
+  section.block:last-of-type { border-bottom: none; }
+
+  h2 {
+    font-family: "IBM Plex Sans Condensed", sans-serif;
+    font-weight: 600;
+    font-size: 1.55rem;
+    text-wrap: balance;
+    margin: 0 0 6px;
+  }
+  h2 .num {
+    color: var(--ink-faint);
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    font-size: 0.85rem;
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 28px 0 10px;
+  }
+  section.block > p, section.block > ul {
+    max-width: 68ch;
+  }
+  p { margin: 0 0 14px; }
+  section.block > p:first-of-type { margin-top: 18px; }
+
+  ul, ol { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+
+  code.inline {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+
+  strong { font-weight: 600; }
+
+  /* ---------- Table ---------- */
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 8px 0 4px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    background: var(--surface);
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13.8px;
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    background: var(--surface-2);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code.inline { white-space: nowrap; }
+  td.num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Pills ---------- */
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 3px 9px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .pill.dir-out { color: var(--dir-out); background: var(--dir-out-bg); }
+  .pill.dir-out::before { background: var(--dir-out); }
+  .pill.dir-in { color: var(--dir-in); background: var(--dir-in-bg); }
+  .pill.dir-in::before { background: var(--dir-in); }
+  .pill.state-starting { color: var(--state-starting); background: var(--state-starting-bg); }
+  .pill.state-starting::before { background: var(--state-starting); }
+  .pill.state-streaming { color: var(--state-streaming); background: var(--state-streaming-bg); }
+  .pill.state-streaming::before { background: var(--state-streaming); }
+  .pill.state-stopped { color: var(--state-stopped); background: var(--state-stopped-bg); }
+  .pill.state-stopped::before { background: var(--state-stopped); }
+  .pill.state-error { color: var(--state-error); background: var(--state-error-bg); }
+  .pill.state-error::before { background: var(--state-error); }
+
+  /* ---------- Code blocks ---------- */
+
+  .code-block {
+    background: var(--code-bg);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 8px 0 20px;
+    border: 1px solid #ffffff14;
+  }
+  .code-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 16px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--code-muted);
+    border-bottom: 1px solid #ffffff14;
+  }
+  .code-block pre {
+    margin: 0;
+    padding: 16px 18px 18px;
+    overflow-x: auto;
+  }
+  .code-block code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--code-ink);
+    white-space: pre;
+  }
+  .c-cmt { color: var(--code-muted); }
+  .c-key { color: var(--code-key); }
+  .c-str { color: var(--code-str); }
+
+  /* ---------- Sequence ---------- */
+
+  .sequence {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 20px;
+    counter-reset: seq;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .sequence li {
+    counter-increment: seq;
+    position: relative;
+    padding: 0 0 22px 40px;
+    margin: 0;
+  }
+  .sequence li::before {
+    content: counter(seq);
+    position: absolute;
+    left: 0; top: 0;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .sequence li::after {
+    content: "";
+    position: absolute;
+    left: 12px; top: 26px; bottom: -2px;
+    width: 1px;
+    background: var(--line);
+  }
+  .sequence li:last-child::after { display: none; }
+  .sequence li .seq-title {
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .sequence li .seq-body { color: var(--ink-muted); font-size: 13.8px; max-width: 60ch; }
+
+  /* ---------- Checklist (open items) ---------- */
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .checklist li {
+    display: flex;
+    gap: 14px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin: 0;
+  }
+  .checklist .box {
+    flex: none;
+    width: 20px; height: 20px;
+    margin-top: 2px;
+    border-radius: 5px;
+    border: 1.5px solid var(--line-strong);
+  }
+  .checklist .body h4 {
+    margin: 0 0 4px;
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+  .checklist .body p {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13.6px;
+    max-width: 58ch;
+  }
+
+  /* ---------- Callout ---------- */
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-tint);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    font-size: 13.8px;
+    color: var(--ink);
+    max-width: 68ch;
+    margin: 6px 0 20px;
+  }
+  .callout strong { color: var(--accent); }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 24px;
+    color: var(--ink-faint);
+    font-size: 12.5px;
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; gap: 20px; }
+    nav.toc {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+    nav.toc .toc-label { display: none; }
+    nav.toc a {
+      border-left: none;
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      padding: 5px 12px;
+    }
+    nav.toc a.active { background: var(--accent-tint); border-color: var(--accent); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    nav.toc a { transition: none; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="spec-head">
+    <div class="eyebrow">Protocol spec &middot; robot/AUTO/video/*</div>
+    <h1 class="title">Video Streaming Contract</h1>
+    <p class="dek">MQTT control contract and video transport for wiring bot-side live camera streaming into the RoshAI control tower.</p>
+    <div class="meta-row">
+      <div class="meta-item">
+        <span class="k">Status</span>
+        <span class="v status-proposed">Proposed &mdash; pending bot-team confirmation</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Same status as</span>
+        <span class="v">heartbeat &middot; telemetry &middot; command</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Wire format</span>
+        <span class="v">Protocol Buffers (proto3)</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Source of truth</span>
+        <span class="v"><code class="inline">shared/proto/video.proto</code></span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Updated</span>
+        <span class="v">Sep 2026 &mdash; ingest is RTSP, was WHIP</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Sections">
+      <span class="toc-label">On this page</span>
+      <a href="#overview">Overview</a>
+      <a href="#topics">Topics</a>
+      <a href="#schema">Schema</a>
+      <a href="#flow">Message flow</a>
+      <a href="#transport">Video transport</a>
+      <a href="#pipeline">GStreamer pipeline</a>
+      <a href="#open-items">Open items</a>
+    </nav>
+
+    <main>
+
+      <section class="block" id="overview">
+        <h2><span class="num">01</span>Overview</h2>
+        <p>Two new MQTT topics let the control tower start and stop the bot's camera stream and adjust its quality. <strong>The video itself never touches MQTT</strong> &mdash; it travels over RTSP directly from the bot to our media server, MediaMTX (browser playback on our side is WebRTC, but that's downstream of MediaMTX and none of your concern). MQTT carries only the small control signal: when to stream, at what quality, and where to push it.</p>
+        <div class="callout"><strong>Updated Sep 2026:</strong> ingest is RTSP, not WHIP as originally proposed &mdash; your Jetson's Ubuntu/GStreamer version predates WHIP's GStreamer &ge;1.22 requirement, so WHIP wasn't actually usable on your hardware. RTSP push (<code class="inline">rtspclientsink</code>) has no such version requirement, so it's the direct substitute &mdash; see <a href="#pipeline">GStreamer pipeline</a>.</div>
+        <p>This follows the same convention as your other topics: fixed <code class="inline">robot/AUTO/&hellip;</code> paths, per-vehicle identity carried in the payload rather than the topic, Protobuf on the wire. Build against it, but treat it as a proposal &mdash; the same way heartbeat, telemetry, and command started as our guesses and got corrected once tested against real hardware.</p>
+      </section>
+
+      <section class="block" id="topics">
+        <h2><span class="num">02</span>Topics</h2>
+        <p>Both topics are QoS&nbsp;1, not QoS&nbsp;0 like heartbeat/telemetry &mdash; a dropped start/stop is a real failure (the stream never starts, or never stops), not a tolerable missed reading.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Topic</th><th>Direction</th><th>QoS</th><th>Payload message</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code class="inline">robot/AUTO/video/control</code></td>
+                <td><span class="pill dir-out">backend &rarr; bot</span></td>
+                <td class="num">1</td>
+                <td><code class="inline">VideoControlCommand</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">robot/AUTO/video/status</code></td>
+                <td><span class="pill dir-in">bot &rarr; backend</span></td>
+                <td class="num">1</td>
+                <td><code class="inline">VideoStatus</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">You subscribe to <strong>video/control</strong> and publish to <strong>video/status</strong> &mdash; mirror image of how you already handle <code class="inline">command</code> vs. <code class="inline">stop-event</code>.</div>
+      </section>
+
+      <section class="block" id="schema">
+        <h2><span class="num">03</span>Protobuf schema</h2>
+        <p>Authoritative definition, copied verbatim from <code class="inline">shared/proto/video.proto</code>. Field numbers are what matter for wire compatibility &mdash; names are cosmetic.</p>
+
+        <div class="code-block">
+          <div class="code-tab"><span>video.proto</span><span>proto3</span></div>
+          <pre><code><span class="c-key">syntax</span> = <span class="c-str">"proto3"</span>;
+<span class="c-key">package</span> roshai.mqtt.v1;
+
+<span class="c-key">enum</span> VideoAction {
+  VIDEO_ACTION_UNSPECIFIED = 0;
+  VIDEO_ACTION_START = 1;
+  VIDEO_ACTION_STOP = 2;
+  VIDEO_ACTION_SET_BITRATE = 3;
+}
+
+<span class="c-key">message</span> VideoControlCommand {
+  <span class="c-key">string</span> vin_number = 1;
+  <span class="c-key">string</span> session_id = 2;
+  <span class="c-key">string</span> command_id = 3;          <span class="c-cmt">// echo this in your VideoStatus reply</span>
+  VideoAction action = 4;
+  <span class="c-key">uint32</span> target_bitrate_kbps = 5; <span class="c-cmt">// set only on START / SET_BITRATE</span>
+  <span class="c-key">uint32</span> target_width = 6;        <span class="c-cmt">// set only on START / SET_BITRATE</span>
+  <span class="c-key">uint32</span> target_height = 7;       <span class="c-cmt">// set only on START / SET_BITRATE</span>
+  <span class="c-key">uint32</span> target_fps = 8;          <span class="c-cmt">// set only on START / SET_BITRATE</span>
+  <span class="c-key">string</span> ingest_url = 9;          <span class="c-cmt">// RTSP push target, START / SET_BITRATE only</span>
+  <span class="c-key">int64</span>  issued_at_ms = 10;        <span class="c-cmt">// epoch ms</span>
+}
+
+<span class="c-key">enum</span> VideoState {
+  VIDEO_STATE_UNSPECIFIED = 0;
+  VIDEO_STATE_STARTING = 1;
+  VIDEO_STATE_STREAMING = 2;
+  VIDEO_STATE_STOPPED = 3;
+  VIDEO_STATE_ERROR = 4;
+}
+
+<span class="c-key">message</span> VideoStatus {
+  <span class="c-key">string</span> vin_number = 1;
+  <span class="c-key">string</span> session_id = 2;
+  <span class="c-key">string</span> command_id = 3;          <span class="c-cmt">// the command_id you're responding to</span>
+  VideoState state = 4;
+  <span class="c-key">uint32</span> current_bitrate_kbps = 5;
+  <span class="c-key">uint32</span> current_width = 6;
+  <span class="c-key">uint32</span> current_height = 7;
+  <span class="c-key">string</span> error_message = 8;       <span class="c-cmt">// only when state == VIDEO_STATE_ERROR</span>
+  <span class="c-key">int64</span>  reported_at_ms = 9;
+}</code></pre>
+        </div>
+
+        <h3>Example &mdash; START</h3>
+        <div class="code-block">
+          <div class="code-tab"><span>VideoControlCommand</span><span>decoded</span></div>
+          <pre><code>{
+  vin_number:          <span class="c-str">"TEST-VIN-001"</span>,
+  session_id:          <span class="c-str">"&lt;active session id from your handshake&gt;"</span>,
+  command_id:          <span class="c-str">"3f9a1c2e-7b41-4e2a-9c3d-88a1e0d2f611"</span>,
+  action:               VIDEO_ACTION_START,
+  target_bitrate_kbps:  4000,
+  target_width:         1280,
+  target_height:        720,
+  target_fps:           30,
+  ingest_url:           <span class="c-str">"rtsp://roshai-control-tower.&lt;tailnet-domain&gt;:8554/AUTO"</span>,
+  issued_at_ms:         1788265845019
+}</code></pre>
+        </div>
+
+        <h3>Example &mdash; STOP</h3>
+        <p>Only these fields are set. Treat the rest as <em>absent</em>, not zero.</p>
+        <div class="code-block">
+          <div class="code-tab"><span>VideoControlCommand</span><span>decoded</span></div>
+          <pre><code>{
+  vin_number:    <span class="c-str">"TEST-VIN-001"</span>,
+  session_id:    <span class="c-str">"&lt;same session id&gt;"</span>,
+  command_id:    <span class="c-str">"91b2c740-..."</span>,
+  action:         VIDEO_ACTION_STOP,
+  issued_at_ms:   1788265900123
+}</code></pre>
+        </div>
+
+        <h3>Field reference &mdash; what to do with each one</h3>
+        <p>Same fields as above, framed as "what do I actually do with this" rather than just the type.</p>
+
+        <p style="margin-top:20px; font-weight:600; font-size:14.5px;">VideoControlCommand &mdash; arrives on <code class="inline">robot/AUTO/video/control</code></p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Field</th><th>Purpose</th><th>What the bot does with it</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code class="inline">vin_number</code></td>
+                <td>Which vehicle this command is for</td>
+                <td>Read-only &mdash; confirms it's addressed to you (today there's only one bot, so always matches)</td>
+              </tr>
+              <tr>
+                <td><code class="inline">session_id</code></td>
+                <td>Ties this command to the active test session</td>
+                <td>Read-only &mdash; copy unchanged into your <code class="inline">VideoStatus</code> reply</td>
+              </tr>
+              <tr>
+                <td><code class="inline">command_id</code></td>
+                <td>Unique ID for <strong>this specific command</strong></td>
+                <td><strong>Must copy exactly</strong> into the <code class="inline">command_id</code> of the <code class="inline">VideoStatus</code> you send back &mdash; this is how we match your reply to the command that triggered it</td>
+              </tr>
+              <tr>
+                <td><code class="inline">action</code></td>
+                <td>What to actually do</td>
+                <td><code class="inline">START</code> &rarr; begin the pipeline. <code class="inline">STOP</code> &rarr; tear it down. <code class="inline">SET_BITRATE</code> &rarr; adjust the running pipeline, or restart it with new values if live reconfig isn't supported</td>
+              </tr>
+              <tr>
+                <td><code class="inline">target_bitrate_kbps</code></td>
+                <td>Desired bitrate, in kbps</td>
+                <td>Set as the encoder's target bitrate (&times;1000 for GStreamer's <code class="inline">bitrate</code> property, which wants bits/sec). Only present on <code class="inline">START</code>/<code class="inline">SET_BITRATE</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">target_width</code>, <code class="inline">target_height</code></td>
+                <td>Desired resolution, in pixels</td>
+                <td>Configure the camera/encoder output to this size. Only present on <code class="inline">START</code>/<code class="inline">SET_BITRATE</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">target_fps</code></td>
+                <td>Desired frame rate</td>
+                <td>Configure the pipeline's capture/encode rate. Only present on <code class="inline">START</code>/<code class="inline">SET_BITRATE</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">ingest_url</code></td>
+                <td><strong>Exact URL to push the RTSP stream to</strong></td>
+                <td>Plug directly into <code class="inline">rtspclientsink</code>'s <code class="inline">location</code> &mdash; don't hardcode your own URL, always use whatever arrives in this field. Only present on <code class="inline">START</code>/<code class="inline">SET_BITRATE</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">issued_at_ms</code></td>
+                <td>When this command was sent (epoch ms)</td>
+                <td>Optional, defensive use only: if a command's timestamp is older than one you've already acted on, it's safe to ignore &mdash; it arrived late after a network hiccup</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="margin-top:28px; font-weight:600; font-size:14.5px;">VideoStatus &mdash; you publish this on <code class="inline">robot/AUTO/video/status</code></p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Field</th><th>Purpose</th><th>What value to send</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code class="inline">vin_number</code></td>
+                <td>Identifies your vehicle</td>
+                <td>Same VIN you already use in handshake/telemetry</td>
+              </tr>
+              <tr>
+                <td><code class="inline">session_id</code></td>
+                <td>Ties this report to the session</td>
+                <td>Echo back the current session's ID</td>
+              </tr>
+              <tr>
+                <td><code class="inline">command_id</code></td>
+                <td>Which command this is a reply to</td>
+                <td><strong>Must exactly match</strong> the <code class="inline">command_id</code> from the triggering <code class="inline">VideoControlCommand</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">state</code></td>
+                <td>What your pipeline is actually doing right now</td>
+                <td><span class="pill state-starting">STARTING</span> immediately after <code class="inline">START</code>, while spinning up &rarr; <span class="pill state-streaming">STREAMING</span> once the RTSP push is actually connected and frames are flowing &rarr; <span class="pill state-stopped">STOPPED</span> after tearing down &rarr; <span class="pill state-error">ERROR</span> if anything failed</td>
+              </tr>
+              <tr>
+                <td><code class="inline">current_bitrate_kbps</code>, <code class="inline">current_width</code>, <code class="inline">current_height</code></td>
+                <td>What's actually being streamed</td>
+                <td>The pipeline's real live values &mdash; mainly relevant when <code class="inline">state: STREAMING</code>; may differ slightly from the requested targets if the encoder rounds to a supported value</td>
+              </tr>
+              <tr>
+                <td><code class="inline">error_message</code></td>
+                <td>Why it failed</td>
+                <td><strong>Only fill in when <code class="inline">state: ERROR</code></strong> &mdash; a short, specific reason: <code class="inline">"camera not found"</code>, <code class="inline">"pipeline failed to start"</code>, <code class="inline">"RTSP push rejected"</code>. Leave empty otherwise</td>
+              </tr>
+              <tr>
+                <td><code class="inline">reported_at_ms</code></td>
+                <td>When this report was generated</td>
+                <td>Current time (epoch ms) at the moment you publish</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top:20px;">The one rule that matters most: every <strong>VideoStatus</strong> you send should carry the <code class="inline">command_id</code> of whatever command it's responding to &mdash; that's the thread that lets our UI show &ldquo;starting&hellip;&rdquo; &rarr; &ldquo;live&rdquo; instead of a black box.</div>
+      </section>
+
+      <section class="block" id="flow">
+        <h2><span class="num">04</span>Message flow</h2>
+        <p>What a typical session looks like, start to finish. Video is <strong>not continuous</strong> &mdash; it runs only while at least one operator has the vehicle's live page open, so expect repeated start/stop cycles within one test run, not a single stream for the whole session.</p>
+
+        <ol class="sequence">
+          <li>
+            <div class="seq-title">Operator opens the vehicle's live page</div>
+            <div class="seq-body">Control tower backend receives its first viewer for this vehicle.</div>
+          </li>
+          <li>
+            <div class="seq-title">Backend publishes <code class="inline">VIDEO_ACTION_START</code></div>
+            <div class="seq-body">On <code class="inline">robot/AUTO/video/control</code>, with target bitrate/resolution/fps and an <code class="inline">ingest_url</code> to push to.</div>
+          </li>
+          <li>
+            <div class="seq-title">Bot replies <span class="pill state-starting">STARTING</span></div>
+            <div class="seq-body">On <code class="inline">robot/AUTO/video/status</code>, echoing the command's <code class="inline">command_id</code>, while the pipeline spins up.</div>
+          </li>
+          <li>
+            <div class="seq-title">Bot pushes H.264 via RTSP</div>
+            <div class="seq-body">To the <code class="inline">ingest_url</code> from step 2 &mdash; see <a href="#transport">Video transport</a> below.</div>
+          </li>
+          <li>
+            <div class="seq-title">Bot replies <span class="pill state-streaming">STREAMING</span></div>
+            <div class="seq-body">Once the RTSP push is actually connected &mdash; include <code class="inline">current_bitrate_kbps</code>/<code class="inline">current_width</code>/<code class="inline">current_height</code>.</div>
+          </li>
+          <li>
+            <div class="seq-title">Last operator closes the page</div>
+            <div class="seq-body">Backend publishes <code class="inline">VIDEO_ACTION_STOP</code>; bot tears the pipeline down and may reply <span class="pill state-stopped">STOPPED</span>.</div>
+          </li>
+        </ol>
+
+        <p>If anything fails at any point &mdash; camera not found, encoder error, RTSP push rejected &mdash; reply <span class="pill state-error">ERROR</span> with a short <code class="inline">error_message</code> instead of going silent. That's what lets the operator UI show something more useful than an indefinite spinner.</p>
+      </section>
+
+      <section class="block" id="transport">
+        <h2><span class="num">05</span>Video transport</h2>
+        <p>Separate from MQTT entirely. On <code class="inline">START</code>:</p>
+        <ul>
+          <li>Read the depth camera's <strong>RGB colour output only</strong> &mdash; not the depth/distance data, which stays on your side for perception.</li>
+          <li>Encode to <strong>H.264</strong> using the Jetson's hardware encoder (<code class="inline">nvv4l2h264enc</code>).</li>
+          <li>Push via <strong>RTSP</strong> (the ANNOUNCE/RECORD publish flow) to the <code class="inline">ingest_url</code> supplied in the command.</li>
+        </ul>
+        <p>On <code class="inline">SET_BITRATE</code>, reconfigure the running encoder live if your pipeline supports it, or restart with the new targets if not. On <code class="inline">STOP</code>, tear the pipeline down.</p>
+      </section>
+
+      <section class="block" id="pipeline">
+        <h2><span class="num">06</span>GStreamer pipeline</h2>
+        <p><code class="inline">rtspclientsink</code> (the RTSP ANNOUNCE/RECORD publish flow) has shipped in <code class="inline">gst-plugins-good</code> for a long time &mdash; this is what replaces the WHIP approach originally proposed here, since your Jetson's Ubuntu/GStreamer version predates WHIP's GStreamer &ge;1.22 requirement (<code class="inline">whipclientsink</code>). No version gate to check this time. If you hit a "no such element" error, confirm the plugin is present:</p>
+        <div class="code-block">
+          <div class="code-tab"><span>sanity check</span><span>bash</span></div>
+          <pre><code>gst-inspect-1.0 rtspclientsink</code></pre>
+        </div>
+
+        <h3>Pipeline</h3>
+        <div class="code-block">
+          <div class="code-tab"><span>pipeline</span><span>bash</span></div>
+          <pre><code>gst-launch-1.0 \
+  &lt;your-camera-RGB-source&gt; ! \
+  nvv4l2h264enc bitrate=4000000 ! \
+  h264parse ! \
+  rtspclientsink location=<span class="c-str">"rtsp://roshai-control-tower.&lt;tailnet-domain&gt;:8554/AUTO"</span> protocols=tcp</code></pre>
+        </div>
+        <p><code class="inline">bitrate</code> is bits/second, so <code class="inline">target_bitrate_kbps &times; 1000</code>. <code class="inline">location</code> should always be whatever arrives in that command's <code class="inline">ingest_url</code> &mdash; the value shown here is just today's default, don't hardcode it.</p>
+        <div class="callout"><strong>Important &mdash; use <code class="inline">protocols=tcp</code>.</strong> <code class="inline">rtspclientsink</code> defaults to negotiating UDP for the actual media (RTP), separate from the TCP control connection. We found this drops the session after ~10s over the tailnet in our own testing &mdash; forcing TCP-interleaved transport (media riding inside the same TCP connection as the RTSP control channel) fixed it immediately and reliably in a sustained test. It's also simpler for you: with <code class="inline">protocols=tcp</code>, only port 8554 matters for ingest &mdash; no separate UDP ports to worry about at all.</div>
+        <div class="callout"><strong>Update, Sep 2026 &mdash; root cause found and fixed server-side.</strong> The ~10s UDP drop above and a separate WebRTC playback failure (browser-side viewing never showed video despite signaling succeeding) turned out to share one cause: our Tailscale container was running without real kernel network access, so it silently fell back to a mode that can't properly carry UDP media. We've since granted it proper network access on our end, which should make raw UDP more reliable over the tailnet going forward. <strong>No action needed on your side</strong> &mdash; <code class="inline">protocols=tcp</code> remains the right, simplest choice for RTSP ingest regardless (fewer ports, no change requested), this is just context in case you were independently chasing the same class of symptom.</div>
+      </section>
+
+      <section class="block" id="open-items">
+        <h2><span class="num">07</span>Open items &mdash; needed before this is final</h2>
+        <ul class="checklist">
+          <li>
+            <div class="box"></div>
+            <div class="body">
+              <h4>Exact depth camera model</h4>
+              <p>Driver/GStreamer support varies by vendor &mdash; RealSense, ZED, OAK-D, and Orbbec each bridge to a GStreamer source differently.</p>
+            </div>
+          </li>
+          <li>
+            <div class="box"></div>
+            <div class="body">
+              <h4>Sign-off on the topic &amp; payload contract above</h4>
+              <p>Same status as heartbeat/telemetry/command &mdash; this is our proposal until it's been tested against real hardware. Flag anything that doesn't fit and we'll revise it together.</p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>RoshAI Control Tower &middot; robot/AUTO/video/control &amp; robot/AUTO/video/status &middot; companion to shared/proto/video.proto</footer>
+
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+    var sections = links.map(function (a) {
+      return document.querySelector(a.getAttribute('href'));
+    });
+
+    function onScroll() {
+      var pos = window.scrollY + 120;
+      var activeIndex = 0;
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i] && sections[i].offsetTop <= pos) activeIndex = i;
+      }
+      links.forEach(function (a, i) {
+        a.classList.toggle('active', i === activeIndex);
+      });
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+</script>

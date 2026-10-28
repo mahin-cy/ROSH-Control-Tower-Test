@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package roshai.mqtt.v1;
+
+// Mirrors shared/src/mqtt/video-control-payload.ts and
+// video-status-payload.ts. Wired to a real protobuf encode/decode path
+// from day one (like session/heartbeat/telemetry/command), not a
+// JSON+Zod placeholder.
+//
+// VideoControlCommand is a per-vehicle TARGETED topic (see
+// shared/src/mqtt/topics.ts's videoControlTopic, robot/{vin}/video/
+// control) — the broker only delivers a control command to the bot
+// subscribed to its own vin, same reasoning as the command/e-stop topic.
+// VideoStatus stays a fixed/shared topic (robot/video/status,
+// MQTT_TOPICS_INBOUND.videoStatus) since it's bot -> backend and the
+// backend already demuxes by payload vin_number. Both QoS 1 — unlike
+// heartbeat/telemetry's tolerable periodic loss, a dropped start/stop or
+// state transition is a real problem (stream never starts, or never
+// stops). Proposed, not yet bot-team-confirmed — see
+// docs/mqtt-multi-vehicle-topic-proposal.html for the handoff.
+//
+// VideoControlCommand (backend -> bot, robot/{vin}/video/control): start,
+// stop, or a live bitrate/resolution adjustment. Publishing is driven by
+// a per-vehicle operator viewer count tracked on the backend — START when
+// the count goes 0->1, STOP when it returns to 0 (including on abrupt
+// Socket.IO disconnects, not just a clean page navigation) — not a naive
+// per-request start/stop. target_bitrate_kbps/target_width/target_height/
+// target_fps/ingest_url are only meaningful for START/SET_BITRATE; the
+// backend omits them on STOP.
+//
+// VideoStatus (bot -> backend, robot/video/status, fixed/shared): the bot's report
+// of actual pipeline state after a command, so the backend/UI reflect
+// reality rather than just "we sent a command." command_id on both
+// messages correlates a status report to the command that triggered it.
+//
+// Video media itself never touches either of these topics or the Node
+// backend — it flows H.264 over RTSP (bot -> MediaMTX ingest, decided
+// Sep 2026) and WHEP (MediaMTX -> browser playback, unaffected by that
+// decision) — see CLAUDE.md's Bot Message Architecture and Tech Stack
+// sections.
+
+enum VideoAction {
+  VIDEO_ACTION_UNSPECIFIED = 0;
+  VIDEO_ACTION_START = 1;
+  VIDEO_ACTION_STOP = 2;
+  VIDEO_ACTION_SET_BITRATE = 3;
+}
+
+message VideoControlCommand {
+  // Not strictly required — vin is already in the topic path
+  // (robot/{vin}/video/control) and namespaced into the ingest URL too —
+  // but populated as a self-contained convenience, same pattern as
+  // CommandPayload.vin_number.
+  string vin_number = 1;
+  string session_id = 2;
+  // Correlates this command to its VideoStatus reply.
+  string command_id = 3;
+  VideoAction action = 4;
+  uint32 target_bitrate_kbps = 5;
+  uint32 target_width = 6;
+  uint32 target_height = 7;
+  uint32 target_fps = 8;
+  // RTSP endpoint the bot should push to (rtspclientsink's
+  // ANNOUNCE/RECORD flow), e.g. rtsp://<tailnet-host>:8554/<vin>. Decided
+  // Sep 2026: RTSP replaced WHIP for bot ingest — bot-team-confirmed
+  // their Jetson's Ubuntu/GStreamer version predates WHIP's GStreamer
+  // >=1.22 requirement, so WHIP was never viable on their real hardware
+  // (not a proactive preference). Browser playback is unaffected,
+  // still WHEP via Traefik's /webrtc prefix (see
+  // docker/docker-compose.yml's mediamtx service; RTSP itself is not
+  // HTTP, so it bypasses Traefik and reaches MediaMTX's own published
+  // RTSP port directly). Sent explicitly rather than hardcoded bot-side
+  // so the backend controls routing — costs nothing today (single fixed
+  // path) and avoids a bot-side config change when per-vehicle paths
+  // arrive with multi-vehicle support.
+  string ingest_url = 9;
+  // Epoch ms. Lets the bot detect a stale command delivered late after a
+  // brief disconnect (e.g. an old START arriving after a newer STOP
+  // already superseded it) — same event-ordering concern already called
+  // out for heartbeat/stop-event in CLAUDE.md's NTP section.
+  int64 issued_at_ms = 10;
+}
+
+enum VideoState {
+  VIDEO_STATE_UNSPECIFIED = 0;
+  VIDEO_STATE_STARTING = 1;
+  VIDEO_STATE_STREAMING = 2;
+  VIDEO_STATE_STOPPED = 3;
+  VIDEO_STATE_ERROR = 4;
+}
+
+message VideoStatus {
+  string vin_number = 1;
+  string session_id = 2;
+  // Echoes the triggering VideoControlCommand.command_id.
+  string command_id = 3;
+  VideoState state = 4;
+  uint32 current_bitrate_kbps = 5;
+  uint32 current_width = 6;
+  uint32 current_height = 7;
+  // Populated only when state == VIDEO_STATE_ERROR, e.g. "camera not
+  // found", "RTSP push rejected".
+  string error_message = 8;
+  int64 reported_at_ms = 9;
+}

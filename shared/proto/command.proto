@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package roshai.mqtt.v1;
+
+// Mirrors shared/src/mqtt/command-payload.ts. Wired to a real protobuf
+// encode/decode path (see backend/src/lib/mqtt-client.ts,
+// tools/bot-simulator.ts), like session.proto/heartbeat.proto/
+// telemetry.proto/stop_event.proto.
+//
+// Published by the backend only, over robot/{vin}/command (see
+// shared/src/mqtt/topics.ts's commandTopic) — a per-vehicle topic so the
+// broker only ever delivers an e-stop/resume to the bot subscribed to its
+// own vin, not every connected bot. This has only ever been exercised
+// against tools/bot-simulator.ts, never the real bot — see
+// docs/mqtt-multi-vehicle-topic-proposal.html for the bot-team handoff.
+
+enum CommandAction {
+  COMMAND_ACTION_UNSPECIFIED = 0;
+  COMMAND_ACTION_E_STOP = 1;
+  COMMAND_ACTION_RESUME = 2;
+}
+
+message CommandPayload {
+  // Not strictly required — vin is already in the topic path (robot/{vin}
+  // /command) — but populated as a self-contained convenience / bot-side
+  // cross-check target, same pattern as HandshakeRequest.vin_number.
+  string vin_number = 1;
+  CommandAction action = 2;
+  string issued_at = 3;
+  string issued_by = 4;
+}

@@ -1,0 +1,664 @@
+<title>MQTT Multi-Vehicle Topic Contract</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+/>
+<style>
+  :root {
+    --bg: #f5f7f8;
+    --surface: #ffffff;
+    --surface-2: #eef2f3;
+    --ink: #121c24;
+    --ink-muted: #56666f;
+    --ink-faint: #8598a1;
+    --line: #dce4e7;
+    --line-strong: #c3cfd3;
+    --accent: #0c7c8c;
+    --accent-ink: #ffffff;
+    --accent-tint: #ddf0f1;
+    --code-bg: #0f1b22;
+    --code-ink: #d9e6ea;
+    --code-muted: #7c93a0;
+    --code-key: #7fc7ce;
+    --code-str: #e3b563;
+    --dir-out: #2e5aac;
+    --dir-out-bg: #e1eaf9;
+    --dir-in: #6a3fa0;
+    --dir-in-bg: #ede3f7;
+    --dir-broadcast: #187a50;
+    --dir-broadcast-bg: #dbf1e4;
+    --warn: #92600b;
+    --warn-bg: #fbebcf;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #0b1418;
+      --surface: #101c22;
+      --surface-2: #16242b;
+      --ink: #e7eef0;
+      --ink-muted: #94a7af;
+      --ink-faint: #62747c;
+      --line: #22333b;
+      --line-strong: #2e4149;
+      --accent: #3fc3d0;
+      --accent-ink: #06181c;
+      --accent-tint: #14313570;
+      --code-bg: #0b1519;
+      --code-ink: #dce8ea;
+      --code-muted: #7c93a0;
+      --code-key: #8fd6dc;
+      --code-str: #e9c57e;
+      --dir-out: #85aaf0;
+      --dir-out-bg: #17233b;
+      --dir-in: #c6a4ec;
+      --dir-in-bg: #241a37;
+      --dir-broadcast: #4fda9c;
+      --dir-broadcast-bg: #103826;
+      --warn: #e7b24c;
+      --warn-bg: #3a2c0f;
+    }
+  }
+
+  :root[data-theme='dark'] {
+    --bg: #0b1418;
+    --surface: #101c22;
+    --surface-2: #16242b;
+    --ink: #e7eef0;
+    --ink-muted: #94a7af;
+    --ink-faint: #62747c;
+    --line: #22333b;
+    --line-strong: #2e4149;
+    --accent: #3fc3d0;
+    --accent-ink: #06181c;
+    --accent-tint: #14313570;
+    --code-bg: #0b1519;
+    --code-ink: #dce8ea;
+    --code-muted: #7c93a0;
+    --code-key: #8fd6dc;
+    --code-str: #e9c57e;
+    --dir-out: #85aaf0;
+    --dir-out-bg: #17233b;
+    --dir-in: #c6a4ec;
+    --dir-in-bg: #241a37;
+    --dir-broadcast: #4fda9c;
+    --dir-broadcast-bg: #103826;
+    --warn: #e7b24c;
+    --warn-bg: #3a2c0f;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family:
+      'IBM Plex Sans',
+      system-ui,
+      -apple-system,
+      sans-serif;
+    font-size: 15.5px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  a {
+    color: var(--accent);
+  }
+  a:focus-visible,
+  button:focus-visible,
+  .toc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--accent-tint);
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  header.spec-head {
+    padding: 44px 0 30px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-tint);
+  }
+
+  h1.title {
+    font-family: 'IBM Plex Sans Condensed', 'IBM Plex Sans', sans-serif;
+    font-weight: 700;
+    font-size: clamp(2.1rem, 4vw, 3rem);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 10px;
+  }
+
+  p.dek {
+    color: var(--ink-muted);
+    font-size: 1.05rem;
+    max-width: 66ch;
+    margin: 0 0 26px;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .meta-item .k {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .meta-item .v {
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 208px 1fr;
+    gap: 48px;
+    margin-top: 36px;
+    align-items: start;
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 8px;
+  }
+  nav.toc .toc-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  nav.toc a {
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 13.5px;
+    padding: 6px 0 6px 12px;
+    border-left: 2px solid var(--line);
+  }
+  nav.toc a:hover {
+    color: var(--ink);
+    border-left-color: var(--line-strong);
+  }
+
+  main {
+    min-width: 0;
+  }
+
+  section.block {
+    padding: 40px 0;
+    border-bottom: 1px solid var(--line);
+    scroll-margin-top: 20px;
+  }
+  section.block:last-of-type {
+    border-bottom: none;
+  }
+
+  h2 {
+    font-family: 'IBM Plex Sans Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 1.55rem;
+    text-wrap: balance;
+    margin: 0 0 6px;
+  }
+  h2 .num {
+    color: var(--ink-faint);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    font-size: 0.85rem;
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 28px 0 10px;
+  }
+  section.block > p,
+  section.block > ul,
+  section.block > ol {
+    max-width: 70ch;
+  }
+  p {
+    margin: 0 0 14px;
+  }
+  section.block > p:first-of-type {
+    margin-top: 18px;
+  }
+
+  ul,
+  ol {
+    padding-left: 22px;
+    margin: 0 0 14px;
+  }
+  li {
+    margin-bottom: 6px;
+  }
+
+  code.inline {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 8px 0 20px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 720px;
+    background: var(--surface);
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13.6px;
+    vertical-align: top;
+  }
+  thead th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    background: var(--surface-2);
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+  td code.inline {
+    white-space: nowrap;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 3px 9px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  .pill::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .pill.dir-out {
+    color: var(--dir-out);
+    background: var(--dir-out-bg);
+  }
+  .pill.dir-out::before {
+    background: var(--dir-out);
+  }
+  .pill.dir-in {
+    color: var(--dir-in);
+    background: var(--dir-in-bg);
+  }
+  .pill.dir-in::before {
+    background: var(--dir-in);
+  }
+  .pill.dir-broadcast {
+    color: var(--dir-broadcast);
+    background: var(--dir-broadcast-bg);
+  }
+  .pill.dir-broadcast::before {
+    background: var(--dir-broadcast);
+  }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-tint);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    font-size: 13.8px;
+    color: var(--ink);
+    max-width: 70ch;
+    margin: 6px 0 20px;
+  }
+  .callout strong {
+    color: var(--accent);
+  }
+  .callout.warn {
+    border-left-color: var(--warn);
+    background: var(--warn-bg);
+  }
+  .callout.warn strong {
+    color: var(--warn);
+  }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .checklist li {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin: 0;
+  }
+  .checklist .body h4 {
+    margin: 0 0 4px;
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+  .checklist .body p {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13.6px;
+    max-width: 62ch;
+  }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 24px;
+    color: var(--ink-faint);
+    font-size: 12.5px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    nav.toc {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+    nav.toc .toc-label {
+      display: none;
+    }
+    nav.toc a {
+      border-left: none;
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      padding: 5px 12px;
+    }
+  }
+</style>
+
+<div class="page">
+  <header class="spec-head">
+    <div class="eyebrow">Protocol spec &middot; robot/*</div>
+    <h1 class="title">MQTT Multi-Vehicle Topic Contract</h1>
+    <p class="dek">
+      Topic scheme update for fleet support &mdash; every
+      <code class="inline">robot/AUTO/&hellip;</code> topic changes. This is a finalized contract,
+      not a request for design input.
+    </p>
+    <div class="meta-row">
+      <div class="meta-item">
+        <span class="k">Scope</span>
+        <span class="v">Topic strings only &mdash; no payload/wire-format changes</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Wire format</span>
+        <span class="v">Protocol Buffers (proto3), unchanged</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Source of truth</span>
+        <span class="v"><code class="inline">shared/src/mqtt/topics.ts</code></span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Target scale</span>
+        <span class="v">~30 bots/vehicles within 6&ndash;12 months</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Sections">
+      <span class="toc-label">On this page</span>
+      <a href="#context">Context</a>
+      <a href="#topics">Topic table</a>
+      <a href="#firmware">Firmware requirements</a>
+      <a href="#questions">Open questions</a>
+      <a href="#cutover">Cutover coordination</a>
+    </nav>
+
+    <main>
+      <section class="block" id="context">
+        <h2><span class="num">01</span>Context</h2>
+        <p>
+          We're extending the control tower to support a fleet of roughly 30 bots/vehicles over the
+          next 6&ndash;12 months, up from today's single-vehicle pilot. Today's
+          <code class="inline">robot/AUTO/&hellip;</code> convention (one fixed topic per message
+          type, vehicle identity carried in the payload) doesn't scale to two things: commands meant
+          for one specific vehicle need to reach only that vehicle, not every connected bot, and the
+          topics that were never really vehicle-specific carried a name that implied otherwise.
+        </p>
+        <p>
+          This is a topic-string-only change.
+          <strong>No payload or protobuf field changes anywhere</strong>, and no new identifiers are
+          introduced &mdash; every topic still identifies a vehicle using the same
+          <code class="inline">vin_number</code> you already send today.
+        </p>
+      </section>
+
+      <section class="block" id="topics">
+        <h2><span class="num">02</span>Topic table</h2>
+        <p>
+          Three topics become per-vehicle (<span class="pill dir-out">backend&rarr;bot</span>,
+          targeted at one vehicle); five stay fixed and shared, just without the now-meaningless
+          <code class="inline">AUTO</code> segment.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Message</th>
+                <th>Direction</th>
+                <th>Old topic</th>
+                <th>New topic</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Handshake request</td>
+                <td><span class="pill dir-in">bot&rarr;backend</span></td>
+                <td><code class="inline">robot/AUTO/handshake/request</code></td>
+                <td><code class="inline">robot/handshake/request</code></td>
+              </tr>
+              <tr>
+                <td>Handshake response</td>
+                <td><span class="pill dir-out">backend&rarr;bot</span></td>
+                <td><code class="inline">robot/AUTO/handshake/response</code></td>
+                <td><code class="inline">robot/{vin}/handshake/response</code></td>
+              </tr>
+              <tr>
+                <td>Heartbeat</td>
+                <td><span class="pill dir-broadcast">backend&rarr;all bots</span></td>
+                <td><code class="inline">robot/AUTO/heartbeat</code></td>
+                <td><code class="inline">robot/heartbeat</code></td>
+              </tr>
+              <tr>
+                <td>Telemetry</td>
+                <td><span class="pill dir-in">bot&rarr;backend</span></td>
+                <td><code class="inline">robot/AUTO/telemetry</code></td>
+                <td><code class="inline">robot/telemetry</code></td>
+              </tr>
+              <tr>
+                <td>Command / e-stop</td>
+                <td><span class="pill dir-out">backend&rarr;bot</span></td>
+                <td><code class="inline">robot/AUTO/command</code></td>
+                <td><code class="inline">robot/{vin}/command</code></td>
+              </tr>
+              <tr>
+                <td>Stop event</td>
+                <td><span class="pill dir-in">bot&rarr;backend</span></td>
+                <td><code class="inline">robot/AUTO/stop-event</code></td>
+                <td><code class="inline">robot/stop-event</code></td>
+              </tr>
+              <tr>
+                <td>Video control</td>
+                <td><span class="pill dir-out">backend&rarr;bot</span></td>
+                <td><code class="inline">robot/AUTO/video/control</code></td>
+                <td><code class="inline">robot/{vin}/video/control</code></td>
+              </tr>
+              <tr>
+                <td>Video status</td>
+                <td><span class="pill dir-in">bot&rarr;backend</span></td>
+                <td><code class="inline">robot/AUTO/video/status</code></td>
+                <td><code class="inline">robot/video/status</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code class="inline">{vin}</code> is the same value you already send in your
+          handshake/telemetry payloads &mdash; no new field, no new identifier.
+        </p>
+        <p>
+          <strong>Why the split:</strong> the three <code class="inline">{vin}</code>-templated
+          topics are messages we send <em>to</em> one specific vehicle. Scoping them per-vehicle
+          means the broker only ever delivers them to the bot that should receive them &mdash; most
+          importantly, so an e-stop meant for one vehicle can never reach another once multiple bots
+          are connected. The other five were always fleet-shared (many bots publishing/receiving on
+          the same topic is fine), so they just lose the <code class="inline">AUTO</code> segment.
+        </p>
+      </section>
+
+      <section class="block" id="firmware">
+        <h2><span class="num">03</span>Firmware requirements</h2>
+        <ol>
+          <li>
+            <strong>Subscribe/publish using the new strings above</strong>, substituting your own
+            vin into the <code class="inline">{vin}</code> slot on the three templated topics.
+          </li>
+          <li>
+            <strong>Ordering requirement on handshake/response specifically:</strong> subscribe to
+            your own <code class="inline">robot/{vin}/handshake/response</code>
+            <em>before or at the same moment as</em> publishing your
+            <code class="inline">handshake/request</code>. MQTT does not redeliver a message to a
+            client that subscribes after it was published &mdash; under the old shared-topic
+            convention this didn't matter (every bot received every ack), but now your ack only ever
+            goes to the one bot subscribed to that specific vin's topic.
+          </li>
+          <li>
+            <strong>New convention &mdash; re-handshake after any reconnect,</strong> not only after
+            power-on, including recovering from a transient network/SIM drop. Since telemetry
+            carries no session identifier, this is how we distinguish "the same session resuming"
+            from unrelated data arriving on our side.
+          </li>
+        </ol>
+      </section>
+
+      <section class="block" id="questions">
+        <h2><span class="num">04</span>Open questions</h2>
+        <ul class="checklist">
+          <li>
+            <div class="body">
+              <h4>MQTT <code class="inline">retain</code> flag usage</h4>
+              <p>
+                Does any bot-published topic (telemetry, stop-event, video-status,
+                handshake-request) use <code class="inline">retain=true</code> today? We're assuming
+                not &mdash; if any do, a shared topic would retain only the most recent publisher's
+                message, which we'd need to handle differently.
+              </p>
+            </div>
+          </li>
+          <li>
+            <div class="body">
+              <h4>Was <code class="inline">AUTO</code> a template or a literal?</h4>
+              <p>
+                Was <code class="inline">AUTO</code> always meant as a firmware template
+                placeholder, or is it a hardcoded literal in your current build? Informational only
+                &mdash; helps us gauge the actual firmware effort, doesn't change what we're asking
+                for.
+              </p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section class="block" id="cutover">
+        <h2><span class="num">05</span>Cutover coordination</h2>
+        <div class="callout warn">
+          <strong>No backwards-compatible bridge:</strong> once our backend switches over, the
+          current pilot vehicle (<code class="inline">TEST-VIN-001</code>) will stop
+          sending/receiving on every one of these channels until its firmware adopts the new
+          strings.
+        </div>
+        <p>
+          We'd like to propose a coordinated cutover date/version and get your firmware deployment
+          scheduled to land at or before it, rather than a silent release on our end. Please confirm
+          a target date, and whether this is a config-only change or requires a new firmware build.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <footer>roshai-control-tower &middot; docs/mqtt-multi-vehicle-topic-proposal.html</footer>
+</div>

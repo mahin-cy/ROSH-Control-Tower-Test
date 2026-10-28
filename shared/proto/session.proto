@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package roshai.mqtt.v1;
+
+// Mirrors shared/src/mqtt/session-payload.ts. This message is wired to a
+// real runtime binary encode/decode path (see backend/src/lib/mqtt-client.ts,
+// tools/bot-simulator.ts), like every other bot message — there are no
+// remaining JSON+Zod placeholders.
+//
+// Field names/types here match the bot team's HandshakeRequest/
+// HandshakeResponse proto (shared Aug 2026). Sent as binary protobuf:
+// SessionPayload on the fixed robot/handshake/request topic (bot team
+// confirmed Aug 2026 for the payload shape; the topic string itself was
+// superseded Sep 2026, see shared/src/mqtt/topics.ts), SessionAckPayload
+// on the per-vehicle robot/{vin}/handshake/response topic. Unlike every
+// other backend->bot payload, SessionAckPayload below carries no
+// vin_number of its own — the topic itself (built from the vin in the
+// SessionPayload that triggered it) is the only vin association; see
+// backend/src/lib/mqtt-client.ts's publishSessionAck, which takes vin as
+// a separate parameter for exactly this reason.
+//
+// SESSION_EVENT_TYPE_SESSION_START *is* the bot's handshake message — the
+// first application-level PUBLISH it sends after the MQTT CONNECT
+// handshake (which is transport-level, handled by the MQTT client/broker,
+// and carries no payload of its own). Don't reintroduce a separate
+// handshake schema for this — vin_number/mac_id/session_id here already
+// cover it.
+
+enum SessionEventType {
+  SESSION_EVENT_TYPE_UNSPECIFIED = 0;
+  SESSION_EVENT_TYPE_SESSION_START = 1;
+  SESSION_EVENT_TYPE_SESSION_END = 2;
+}
+
+message SessionPayload {
+  string vin_number = 1;
+  string mac_id = 2;
+
+  // Bot's proto types this as a plain string (not the earlier oneof
+  // int64/string guess).
+  string session_id = 3;
+
+  // Not present in the bot's HandshakeRequest — app-side event-ordering
+  // field (see CLAUDE.md's NTP/heartbeat-ordering rationale). Optional so
+  // the bot's exact 3-field handshake still validates; the backend stamps
+  // its own receive time when omitted.
+  optional string timestamp = 4;
+
+  // Also not in HandshakeRequest — defaults to SESSION_START at the Zod
+  // layer when omitted, so the bot's bare handshake message still parses
+  // as session-start without requiring this field.
+  SessionEventType event_type = 5;
+}
+
+// Mirrors the bot team's HandshakeResponse exactly. Published by the
+// backend on the per-vehicle robot/{vin}/handshake/response topic — the
+// first backend-to-bot channel other than the ACL-locked command topic
+// (see docker/mosquitto/acl.conf).
+message SessionAckPayload {
+  bool success = 1;
+  string message = 2;
+  string session_id = 3;
+}

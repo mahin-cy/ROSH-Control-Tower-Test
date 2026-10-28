@@ -1,0 +1,936 @@
+<title>Session Audio Contract</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F5F7F8;
+    --surface: #FFFFFF;
+    --surface-2: #EEF2F3;
+    --ink: #121C24;
+    --ink-muted: #56666F;
+    --ink-faint: #8598A1;
+    --line: #DCE4E7;
+    --line-strong: #C3CFD3;
+    --accent: #0C7C8C;
+    --accent-ink: #FFFFFF;
+    --accent-tint: #DDF0F1;
+    --code-bg: #0F1B22;
+    --code-ink: #D9E6EA;
+    --code-muted: #7C93A0;
+    --code-key: #7FC7CE;
+    --code-str: #E3B563;
+    --state-starting: #92600B;
+    --state-starting-bg: #FBEBCF;
+    --state-streaming: #187A50;
+    --state-streaming-bg: #DBF1E4;
+    --state-stopped: #566269;
+    --state-stopped-bg: #E7ECEE;
+    --state-error: #A93A24;
+    --state-error-bg: #FBE1DA;
+    --dir-out: #2E5AAC;
+    --dir-out-bg: #E1EAF9;
+    --dir-in: #6A3FA0;
+    --dir-in-bg: #EDE3F7;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B1418;
+      --surface: #101C22;
+      --surface-2: #16242B;
+      --ink: #E7EEF0;
+      --ink-muted: #94A7AF;
+      --ink-faint: #62747C;
+      --line: #22333B;
+      --line-strong: #2E4149;
+      --accent: #3FC3D0;
+      --accent-ink: #06181C;
+      --accent-tint: #14313570;
+      --code-bg: #0B1519;
+      --code-ink: #DCE8EA;
+      --code-muted: #7C93A0;
+      --code-key: #8FD6DC;
+      --code-str: #E9C57E;
+      --state-starting: #E7B24C;
+      --state-starting-bg: #3A2C0F;
+      --state-streaming: #4FDA9C;
+      --state-streaming-bg: #103826;
+      --state-stopped: #A6B3B9;
+      --state-stopped-bg: #24333A;
+      --state-error: #FF8065;
+      --state-error-bg: #3D1811;
+      --dir-out: #85AAF0;
+      --dir-out-bg: #17233B;
+      --dir-in: #C6A4EC;
+      --dir-in-bg: #241a37;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0B1418;
+    --surface: #101C22;
+    --surface-2: #16242B;
+    --ink: #E7EEF0;
+    --ink-muted: #94A7AF;
+    --ink-faint: #62747C;
+    --line: #22333B;
+    --line-strong: #2E4149;
+    --accent: #3FC3D0;
+    --accent-ink: #06181C;
+    --accent-tint: #14313570;
+    --code-bg: #0B1519;
+    --code-ink: #DCE8EA;
+    --code-muted: #7C93A0;
+    --code-key: #8FD6DC;
+    --code-str: #E9C57E;
+    --state-starting: #E7B24C;
+    --state-starting-bg: #3A2C0F;
+    --state-streaming: #4FDA9C;
+    --state-streaming-bg: #103826;
+    --state-stopped: #A6B3B9;
+    --state-stopped-bg: #24333A;
+    --state-error: #FF8065;
+    --state-error-bg: #3D1811;
+    --dir-out: #85AAF0;
+    --dir-out-bg: #17233B;
+    --dir-in: #C6A4EC;
+    --dir-in-bg: #241a37;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 15.5px;
+    line-height: 1.6;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, .toc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection { background: var(--accent-tint); }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  /* ---------- Header ---------- */
+
+  header.spec-head {
+    padding: 44px 0 30px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-tint);
+  }
+
+  h1.title {
+    font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+    font-weight: 700;
+    font-size: clamp(2.1rem, 4vw, 3rem);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 10px;
+  }
+
+  p.dek {
+    color: var(--ink-muted);
+    font-size: 1.05rem;
+    max-width: 62ch;
+    margin: 0 0 26px;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .meta-item .k {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .meta-item .v {
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .meta-item .v.status-proposed { color: var(--state-starting); }
+
+  /* ---------- Layout: TOC + content ---------- */
+
+  .layout {
+    display: grid;
+    grid-template-columns: 208px 1fr;
+    gap: 48px;
+    margin-top: 36px;
+    align-items: start;
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 8px;
+  }
+  nav.toc .toc-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  nav.toc a {
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 13.5px;
+    padding: 6px 0 6px 12px;
+    border-left: 2px solid var(--line);
+    transition: color .15s ease, border-color .15s ease;
+  }
+  nav.toc a:hover { color: var(--ink); border-left-color: var(--line-strong); }
+  nav.toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+
+  main { min-width: 0; }
+
+  section.block {
+    padding: 40px 0;
+    border-bottom: 1px solid var(--line);
+    scroll-margin-top: 20px;
+  }
+  section.block:last-of-type { border-bottom: none; }
+
+  h2 {
+    font-family: "IBM Plex Sans Condensed", sans-serif;
+    font-weight: 600;
+    font-size: 1.55rem;
+    text-wrap: balance;
+    margin: 0 0 6px;
+  }
+  h2 .num {
+    color: var(--ink-faint);
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    font-size: 0.85rem;
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 28px 0 10px;
+  }
+  section.block > p, section.block > ul {
+    max-width: 68ch;
+  }
+  p { margin: 0 0 14px; }
+  section.block > p:first-of-type { margin-top: 18px; }
+
+  ul, ol { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+
+  code.inline {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+
+  strong { font-weight: 600; }
+
+  /* ---------- Table ---------- */
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 8px 0 4px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    background: var(--surface);
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13.8px;
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    background: var(--surface-2);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code.inline { white-space: nowrap; }
+  td.num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Pills ---------- */
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 3px 9px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .pill.dir-out { color: var(--dir-out); background: var(--dir-out-bg); }
+  .pill.dir-out::before { background: var(--dir-out); }
+  .pill.dir-in { color: var(--dir-in); background: var(--dir-in-bg); }
+  .pill.dir-in::before { background: var(--dir-in); }
+  .pill.state-starting { color: var(--state-starting); background: var(--state-starting-bg); }
+  .pill.state-starting::before { background: var(--state-starting); }
+  .pill.state-streaming { color: var(--state-streaming); background: var(--state-streaming-bg); }
+  .pill.state-streaming::before { background: var(--state-streaming); }
+  .pill.state-stopped { color: var(--state-stopped); background: var(--state-stopped-bg); }
+  .pill.state-stopped::before { background: var(--state-stopped); }
+  .pill.state-error { color: var(--state-error); background: var(--state-error-bg); }
+  .pill.state-error::before { background: var(--state-error); }
+
+  /* ---------- Code blocks ---------- */
+
+  .code-block {
+    background: var(--code-bg);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 8px 0 20px;
+    border: 1px solid #ffffff14;
+  }
+  .code-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 16px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--code-muted);
+    border-bottom: 1px solid #ffffff14;
+  }
+  .code-block pre {
+    margin: 0;
+    padding: 16px 18px 18px;
+    overflow-x: auto;
+  }
+  .code-block code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--code-ink);
+    white-space: pre;
+  }
+  .c-cmt { color: var(--code-muted); }
+  .c-key { color: var(--code-key); }
+  .c-str { color: var(--code-str); }
+
+  /* ---------- Sequence ---------- */
+
+  .sequence {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 20px;
+    counter-reset: seq;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .sequence li {
+    counter-increment: seq;
+    position: relative;
+    padding: 0 0 22px 40px;
+    margin: 0;
+  }
+  .sequence li::before {
+    content: counter(seq);
+    position: absolute;
+    left: 0; top: 0;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .sequence li::after {
+    content: "";
+    position: absolute;
+    left: 12px; top: 26px; bottom: -2px;
+    width: 1px;
+    background: var(--line);
+  }
+  .sequence li:last-child::after { display: none; }
+  .sequence li .seq-title {
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .sequence li .seq-body { color: var(--ink-muted); font-size: 13.8px; max-width: 60ch; }
+
+  /* ---------- Checklist (open items) ---------- */
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .checklist li {
+    display: flex;
+    gap: 14px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin: 0;
+  }
+  .checklist .box {
+    flex: none;
+    width: 20px; height: 20px;
+    margin-top: 2px;
+    border-radius: 5px;
+    border: 1.5px solid var(--line-strong);
+  }
+  .checklist .body h4 {
+    margin: 0 0 4px;
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+  .checklist .body p {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13.6px;
+    max-width: 58ch;
+  }
+
+  /* ---------- Callout ---------- */
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-tint);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    font-size: 13.8px;
+    color: var(--ink);
+    max-width: 68ch;
+    margin: 6px 0 20px;
+  }
+  .callout strong { color: var(--accent); }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 24px;
+    color: var(--ink-faint);
+    font-size: 12.5px;
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; gap: 20px; }
+    nav.toc {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+    nav.toc .toc-label { display: none; }
+    nav.toc a {
+      border-left: none;
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      padding: 5px 12px;
+    }
+    nav.toc a.active { background: var(--accent-tint); border-color: var(--accent); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    nav.toc a { transition: none; }
+  }
+</style>
+<style>
+  /* Additions for this doc: phone-safe gutter, native controls follow theme, file-name example */
+  .page {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 96px;
+  }
+  @media (min-width: 700px) {
+    .page {
+      padding-left: max(28px, env(safe-area-inset-left, 0px));
+      padding-right: max(28px, env(safe-area-inset-right, 0px));
+    }
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  .example-name {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin: 8px 0 18px;
+  }
+  .example-name .seg-vin { color: var(--dir-out); }
+  .example-name .seg-mac { color: var(--dir-in); }
+  .example-name .seg-sid { color: var(--state-streaming); }
+  .example-name .seg-sep { color: var(--ink-faint); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; color: var(--ink-muted); margin: -8px 0 18px; }
+  .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; background: currentColor; }
+  .legend .l-vin { color: var(--dir-out); }
+  .legend .l-mac { color: var(--dir-in); }
+  .legend .l-sid { color: var(--state-streaming); }
+  .pref { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
+</style>
+
+<div class="page">
+
+  <header class="spec-head">
+    <div class="eyebrow">Protocol spec &middot; post-run audio retrieval</div>
+    <h1 class="title">Session Audio Contract</h1>
+    <p class="dek">At the end of each test run the bot uploads its report, then asks the control tower whether the audio is wanted. It uploads the audio only on a yes, and sends <code class="inline">session-end</code> last, as it does today.</p>
+    <div class="meta-row">
+      <div class="meta-item">
+        <span class="k">Status</span>
+        <span class="v status-proposed">Proposed &mdash; pending bot-team review</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Changes</span>
+        <span class="v">New audio.proto only &mdash; e-stop and handshake unchanged</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Upload protocol</span>
+        <span class="v">tus 1.0.0 over HTTPS (libcurl)</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Out of scope</span>
+        <span class="v">Deleting audio on the bot &middot; hardware indicator (bot team's call)</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Date</span>
+        <span class="v">19 Oct 2026 &middot; rev 4: audio phase before session-end</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Sections">
+      <span class="toc-label">On this page</span>
+      <a href="#overview">Overview</a>
+      <a href="#sequence">End-of-run sequence</a>
+      <a href="#alive">Keeping the session alive</a>
+      <a href="#naming">File naming</a>
+      <a href="#messages">Topics &amp; messages</a>
+      <a href="#commands">Commands</a>
+      <a href="#status">Status</a>
+      <a href="#upload">Upload (tus)</a>
+      <a href="#rules">Behaviour rules</a>
+      <a href="#acceptance">Acceptance tests</a>
+      <a href="#questions">Open questions</a>
+    </nav>
+
+    <main>
+
+      <section class="block" id="overview">
+        <h2><span class="num">01</span>Overview</h2>
+        <p>The bot records audio during each test run, roughly 50&ndash;500&nbsp;MB per session as WAV. Nothing is uploaded while driving, so live video and telemetry keep the SIM uplink to themselves.</p>
+        <p>When the physical run ends, the bot uploads the PDF report as it does today, then tells the control tower the audio is ready and waits. The control tower asks its admins and operators whether they want it:</p>
+        <ul>
+          <li><strong>Yes:</strong> the bot uploads the audio, then sends <code class="inline">session-end</code>.</li>
+          <li><strong>No:</strong> the bot sends <code class="inline">session-end</code> straight away.</li>
+          <li><strong>Cancel during the upload:</strong> the bot stops and sends <code class="inline">session-end</code>.</li>
+          <li><strong>No answer in time:</strong> the bot sends <code class="inline">session-end</code>.</li>
+        </ul>
+        <div class="callout"><strong>session-end stays the bot's last message</strong>, exactly as today. The whole audio phase happens inside the session, so the bot never needs to remember anything for later and never changes vehicle mid-way. Keeping or deleting audio on the bot afterwards, and any &ldquo;uploading&rdquo; indicator on the hardware, are the bot team's decision.</div>
+      </section>
+
+      <section class="block" id="sequence">
+        <h2><span class="num">02</span>End-of-run sequence</h2>
+        <ol class="sequence">
+          <li><div class="seq-title">Physical run ends</div><div class="seq-body">The vehicle stops. The session stays open. Keep sending telemetry (see section 03).</div></li>
+          <li><div class="seq-title">Upload the PDF report</div><div class="seq-body">Exactly as today, <code class="inline">POST /api/v1/vehicles/{vin}/reports</code>.</div></li>
+          <li><div class="seq-title">Announce the audio</div><div class="seq-body">Close the audio file (including its final header), compute its SHA-256, and publish <code class="inline">AudioReady</code>. If the run has no audio, skip to step 5.</div></li>
+          <li><div class="seq-title">Wait for the decision</div><div class="seq-body">Wait up to <code class="inline">decision_window_s</code> for a command on <code class="inline">robot/{vin}/audio/control</code>:
+            <ul style="margin:6px 0 0;padding-left:18px">
+              <li><code class="inline">FETCH</code>: upload the file (section 08). On success, send <code class="inline">COMPLETED</code>.</li>
+              <li><code class="inline">CANCEL</code>, while waiting or while uploading: stop, send <code class="inline">CANCELLED</code>.</li>
+              <li>Nothing within the window: send <code class="inline">EXPIRED</code>.</li>
+            </ul></div></li>
+          <li><div class="seq-title">Send session-end, then disconnect</div><div class="seq-body">As today. Nothing is sent after this.</div></li>
+        </ol>
+        <p>Meanwhile the web app shows every online user &ldquo;Download audio for this run? (320&nbsp;MB)&rdquo; with a countdown based on <code class="inline">decision_window_s</code>. The first answer wins. While the audio phase runs, the vehicle is shown as <strong>&ldquo;Run finished &middot; uploading audio&rdquo;</strong>, not as driving.</p>
+      </section>
+
+      <section class="block" id="alive">
+        <h2><span class="num">03</span>Keeping the session alive</h2>
+        <p>Today the control tower uses telemetry to tell whether a bot is still there. An active session with no telemetry for 30&nbsp;seconds is marked <em>lost contact</em>. The audio phase can last many minutes, so something has to keep the session alive during it.</p>
+
+        <h3>Preferred: keep telemetry running until session-end</h3>
+        <ul>
+          <li>Keep publishing telemetry at 1&nbsp;Hz through the report, the wait and the upload, and stop only when you send <code class="inline">session-end</code>.</li>
+          <li>It's a few hundred bytes per second, negligible next to the upload, and while parked it's real data (speed 0).</li>
+          <li>Nothing changes on the server: a crash or power cut is still detected within 30&nbsp;seconds.</li>
+        </ul>
+
+        <h3>Fallback, if telemetry can't continue after the run</h3>
+        <p>If your telemetry comes from parts of the driving stack that shut down when the run ends, tell us (Q2). The control tower will then keep the session alive itself, using these timeouts instead:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Phase</th><th>What the server watches</th><th>Marked lost contact after</th></tr></thead>
+            <tbody>
+              <tr><td>Report upload (before <code class="inline">AudioReady</code>)</td><td>Nothing new yet</td><td>The normal 30&nbsp;s after the last telemetry</td></tr>
+              <tr><td>Waiting for a decision</td><td>Nothing (the bot is silent)</td><td><code class="inline">decision_window_s</code> + 60&nbsp;s with no status or <code class="inline">session-end</code></td></tr>
+              <tr><td>Uploading</td><td>Upload chunks arriving</td><td>2&nbsp;minutes with no new data</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Under the fallback, publish <code class="inline">AudioReady</code> within 30&nbsp;seconds of the last telemetry message. Do the report first only if it reliably takes less than that. Crashes are then detected in minutes rather than seconds, which is acceptable for a parked vehicle.</p>
+      </section>
+
+      <section class="block" id="naming">
+        <h2><span class="num">04</span>File naming</h2>
+        <p>One run is identified by <strong>(vin, mac_id, session_id)</strong>, the same identity already used for sessions and PDF reports.</p>
+        <div class="code-block">
+          <div class="code-tab"><span>format</span><span>one file per session</span></div>
+          <pre><code>{vin}_{macId}_{sessionId}.{ext}        <span class="c-cmt">// ext = wav | flac | opus</span></code></pre>
+        </div>
+        <p>Before joining the parts, replace every character outside <code class="inline">[A-Za-z0-9_-]</code> in each part with <code class="inline">_</code>. This is the same rule the control tower uses for report file names. For example, the MAC <code class="inline">00:1A:2B:3C:4D:5E</code> becomes <code class="inline">00_1A_2B_3C_4D_5E</code>:</p>
+        <div class="example-name"><span class="seg-vin">TEST-VIN-001</span><span class="seg-sep">_</span><span class="seg-mac">00_1A_2B_3C_4D_5E</span><span class="seg-sep">_</span><span class="seg-sid">1760000000</span><span class="seg-sep">.wav</span></div>
+        <div class="legend"><span class="l-vin">VIN</span><span class="l-mac">MAC ID</span><span class="l-sid">Session ID</span></div>
+      </section>
+
+      <section class="block" id="messages">
+        <h2><span class="num">05</span>Topics and messages</h2>
+        <p>Audio gets its own channel, the same way video already has <code class="inline">video/control</code> and <code class="inline">video/status</code>. <strong>The e-stop message (<code class="inline">command.proto</code>) and the handshake (<code class="inline">session.proto</code>) are not changed.</strong> Everything new is in one file, <code class="inline">audio.proto</code>.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Topic</th><th>Direction</th><th>QoS</th><th>Message</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code class="inline">robot/audio/ready</code></td>
+                <td><span class="pill dir-in">bot &rarr; backend</span></td>
+                <td class="num">1</td>
+                <td><code class="inline">AudioReady</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">robot/{vin}/audio/control</code></td>
+                <td><span class="pill dir-out">backend &rarr; bot</span></td>
+                <td class="num">1</td>
+                <td><code class="inline">AudioControlCommand</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">robot/audio/status</code></td>
+                <td><span class="pill dir-in">bot &rarr; backend</span></td>
+                <td class="num">1</td>
+                <td><code class="inline">AudioStatus</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">Subscribe to <strong>robot/{vin}/audio/control at QoS&nbsp;1</strong>, together with the existing handshake-response and command topics, before publishing the handshake. MQTT delivers at the lower of the publish and subscribe QoS, so a QoS&nbsp;0 subscription would silently downgrade our commands. As with the command topic, only the backend can publish on <code class="inline">audio/control</code>.</div>
+
+        <div class="code-block">
+          <div class="code-tab"><span>audio.proto &mdash; new file</span><span>proto3</span></div>
+          <pre><code><span class="c-key">syntax</span> = <span class="c-str">"proto3"</span>;
+<span class="c-key">package</span> roshai.mqtt.v1;
+
+<span class="c-cmt">// robot/audio/ready — bot → backend, once per run, after the report</span>
+<span class="c-key">message</span> AudioReady {
+  <span class="c-key">string</span> vin_number        = 1;
+  <span class="c-key">string</span> mac_id            = 2;
+  <span class="c-key">string</span> session_id        = 3;
+  <span class="c-key">string</span> file_name         = 4;  <span class="c-cmt">// exactly as in section 04</span>
+  <span class="c-key">uint64</span> size_bytes        = 5;
+  <span class="c-key">string</span> sha256            = 6;  <span class="c-cmt">// lowercase hex, of the finished file</span>
+  <span class="c-key">string</span> format            = 7;  <span class="c-cmt">// "wav" | "flac" | "opus"</span>
+  <span class="c-key">string</span> recorded_at       = 8;  <span class="c-cmt">// ISO-8601 UTC, session start time</span>
+  <span class="c-key">uint32</span> decision_window_s = 9;  <span class="c-cmt">// how long the bot will wait for FETCH</span>
+}
+
+<span class="c-key">enum</span> AudioControlAction {
+  AUDIO_CONTROL_ACTION_UNSPECIFIED = 0;
+  AUDIO_CONTROL_ACTION_FETCH       = 1;  <span class="c-cmt">// user wants the audio: upload it</span>
+  AUDIO_CONTROL_ACTION_CANCEL      = 2;  <span class="c-cmt">// user said no, or stopped the upload</span>
+}
+
+<span class="c-cmt">// robot/{vin}/audio/control — backend → bot</span>
+<span class="c-key">message</span> AudioControlCommand {
+  <span class="c-key">string</span> vin_number = 1;  <span class="c-cmt">// same as the topic, cross-check</span>
+  AudioControlAction action = 2;
+  <span class="c-key">string</span> session_id = 3;
+  <span class="c-key">string</span> file_name  = 4;
+  <span class="c-key">string</span> upload_url = 5;  <span class="c-cmt">// FETCH only, e.g. https://&lt;host&gt;/api/v1/audio/uploads</span>
+  <span class="c-key">string</span> command_id = 6;  <span class="c-cmt">// echo back in AudioStatus</span>
+  <span class="c-key">string</span> issued_at  = 7;  <span class="c-cmt">// ISO-8601 UTC</span>
+}
+
+<span class="c-key">enum</span> AudioTransferState {
+  AUDIO_TRANSFER_STATE_UNSPECIFIED = 0;
+  AUDIO_TRANSFER_STATE_UPLOADING   = 1;
+  AUDIO_TRANSFER_STATE_COMPLETED   = 2;
+  AUDIO_TRANSFER_STATE_CANCELLED   = 3;
+  AUDIO_TRANSFER_STATE_EXPIRED     = 4;  <span class="c-cmt">// no FETCH within the decision window</span>
+  AUDIO_TRANSFER_STATE_NOT_FOUND   = 5;
+  AUDIO_TRANSFER_STATE_ERROR       = 6;
+}
+
+<span class="c-cmt">// robot/audio/status — bot → backend</span>
+<span class="c-key">message</span> AudioStatus {
+  <span class="c-key">string</span> vin_number    = 1;
+  <span class="c-key">string</span> mac_id        = 2;
+  <span class="c-key">string</span> session_id    = 3;
+  <span class="c-key">string</span> file_name     = 4;
+  AudioTransferState state  = 5;
+  <span class="c-key">uint64</span> bytes_sent    = 6;
+  <span class="c-key">string</span> error_message = 7;  <span class="c-cmt">// set for ERROR</span>
+  <span class="c-key">string</span> command_id    = 8;  <span class="c-cmt">// from the command that triggered this, if any</span>
+}</code></pre>
+        </div>
+      </section>
+
+      <section class="block" id="commands">
+        <h2><span class="num">06</span>Handling commands</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Action</th><th>What the bot does</th><th>Replies, then</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code class="inline">FETCH</code></td>
+                <td>
+                  <ol style="margin:0;padding-left:18px">
+                    <li>Check that <code class="inline">session_id</code> and <code class="inline">file_name</code> match the file you announced. Reject anything containing a path separator.</li>
+                    <li>If the file is missing, reply <code class="inline">NOT_FOUND</code>.</li>
+                    <li>Stop the decision timer and upload as in section 08.</li>
+                    <li>If the upload is already running, ignore the duplicate.</li>
+                  </ol>
+                </td>
+                <td><span class="pill state-starting">UPLOADING</span> &rarr; <span class="pill state-streaming">COMPLETED</span>, then <code class="inline">session-end</code></td>
+              </tr>
+              <tr>
+                <td><code class="inline">CANCEL</code></td>
+                <td>Stop waiting, or stop sending upload data (check between chunks). There's no need to clean up on the server; the control tower removes the partial upload itself.</td>
+                <td><span class="pill state-stopped">CANCELLED</span>, then <code class="inline">session-end</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">QoS&nbsp;1 can deliver a command twice. Both actions are safe to repeat: a duplicate FETCH is ignored, and a CANCEL that arrives after you've finished can be ignored.</div>
+      </section>
+
+      <section class="block" id="status">
+        <h2><span class="num">07</span>Reporting status</h2>
+        <p>Publish <code class="inline">AudioStatus</code> on <code class="inline">robot/audio/status</code> only when the state changes. The control tower tracks upload progress itself, so per-chunk messages aren't needed. Every state except <code class="inline">UPLOADING</code> is final: send <code class="inline">session-end</code> next.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>State</th><th>Send when</th><th>Next</th></tr></thead>
+            <tbody>
+              <tr><td><span class="pill state-starting">UPLOADING</span></td><td>The upload starts</td><td>Keep uploading</td></tr>
+              <tr><td><span class="pill state-streaming">COMPLETED</span></td><td>The final PATCH returned 204 (the server verified the file)</td><td><code class="inline">session-end</code></td></tr>
+              <tr><td><span class="pill state-stopped">CANCELLED</span></td><td>After a CANCEL command</td><td><code class="inline">session-end</code></td></tr>
+              <tr><td><span class="pill state-stopped">EXPIRED</span></td><td>No FETCH arrived within the decision window</td><td><code class="inline">session-end</code></td></tr>
+              <tr><td><span class="pill state-stopped">NOT_FOUND</span></td><td>The file to upload isn't there</td><td><code class="inline">session-end</code></td></tr>
+              <tr><td><span class="pill state-error">ERROR</span></td><td>The upload failed for good (403, or retries gave up), or the request didn't match</td><td><code class="inline">session-end</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block" id="upload">
+        <h2><span class="num">08</span>Upload with tus 1.0.0</h2>
+        <p>The upload goes to the <code class="inline">upload_url</code> from the FETCH command, over the same tailnet hostname and port 443 as the PDF report upload. There is no authentication, the same as today. tus is a small open HTTP protocol for resumable uploads (<a href="https://tus.io/protocols/resumable-upload" target="_blank" rel="noopener">tus.io</a>). Here it lets an upload survive SIM drop-outs within the session. It takes three request types, all of which libcurl handles.</p>
+
+        <h3>1. Create the upload</h3>
+        <div class="code-block">
+          <div class="code-tab"><span>request &rarr; response</span><span>HTTP</span></div>
+          <pre><code><span class="c-key">POST</span> {upload_url}
+Tus-Resumable: 1.0.0
+Upload-Length: &lt;size_bytes&gt;
+Upload-Metadata: vin &lt;b64&gt;,macId &lt;b64&gt;,sessionId &lt;b64&gt;,fileName &lt;b64&gt;,sha256 &lt;b64&gt;
+
+<span class="c-cmt">→ 201 Created</span>
+Location: &lt;upload URL&gt;        <span class="c-cmt">// keep this for the rest of the upload</span></code></pre>
+        </div>
+        <p>Metadata values are base64-encoded.</p>
+
+        <h3>2. Send the data in 5&ndash;8&nbsp;MB chunks</h3>
+        <div class="code-block">
+          <div class="code-tab"><span>request &rarr; response</span><span>HTTP</span></div>
+          <pre><code><span class="c-key">PATCH</span> &lt;upload URL&gt;
+Tus-Resumable: 1.0.0
+Content-Type: application/offset+octet-stream
+Upload-Offset: &lt;current offset&gt;
+
+&lt;chunk bytes&gt;
+
+<span class="c-cmt">→ 204 No Content</span>
+Upload-Offset: &lt;new offset&gt;</code></pre>
+        </div>
+
+        <h3>3. Resume after a dropped connection</h3>
+        <div class="code-block">
+          <div class="code-tab"><span>request &rarr; response</span><span>HTTP</span></div>
+          <pre><code><span class="c-key">HEAD</span> &lt;upload URL&gt;
+Tus-Resumable: 1.0.0
+
+<span class="c-cmt">→ 200 OK</span>
+Upload-Offset: &lt;n&gt;            <span class="c-cmt">// continue PATCHing from here</span></code></pre>
+        </div>
+
+        <h3>Responses and what to do</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Response</th><th>Meaning</th><th>Bot action</th></tr></thead>
+            <tbody>
+              <tr><td class="num">204 on the final PATCH</td><td>File received and SHA-256 verified</td><td>Send <code class="inline">COMPLETED</code></td></tr>
+              <tr><td class="num">460</td><td>Checksum mismatch</td><td>Start again from step 1, once. If it fails again, send <code class="inline">ERROR</code>.</td></tr>
+              <tr><td class="num">409</td><td>Offset mismatch</td><td>Run HEAD to get the correct offset, then continue</td></tr>
+              <tr><td class="num">404 / 410</td><td>The upload was cancelled or expired on the server</td><td>Stop. A CANCEL is normally on its way.</td></tr>
+              <tr><td class="num">403</td><td>The server didn't request this file</td><td>Stop and send <code class="inline">ERROR</code></td></tr>
+              <tr><td class="num">5xx / network error</td><td>Temporary failure</td><td>Retry with backoff, then resume with HEAD</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>libcurl notes</h3>
+        <ul>
+          <li>For PATCH, use <code class="inline">CURLOPT_CUSTOMREQUEST "PATCH"</code> with <code class="inline">CURLOPT_UPLOAD</code> and <code class="inline">CURLOPT_READFUNCTION</code>, reading from the file at the current offset.</li>
+          <li>Detect stalled links with <code class="inline">CURLOPT_LOW_SPEED_LIMIT</code> and <code class="inline">CURLOPT_LOW_SPEED_TIME</code>, for example under 1&nbsp;KB/s for 30&nbsp;s.</li>
+          <li>Retry with backoff from 1&nbsp;s up to 60&nbsp;s. Give up and send <code class="inline">ERROR</code> after a limit you choose (we suggest 15&nbsp;minutes without progress).</li>
+          <li>Check for a CANCEL between chunks, so a cancel takes effect within one chunk.</li>
+        </ul>
+      </section>
+
+      <section class="block" id="rules">
+        <h2><span class="num">09</span>Behaviour rules</h2>
+        <ol>
+          <li><strong>session-end is always last.</strong> Don't send it until the audio phase has reached a final state (section 07). If the run has no audio, send it straight after the report, as today.</li>
+          <li><strong>Allow enough time to shut down.</strong> If the end of a test is triggered by an OS shutdown, the service manager (systemd) usually force-kills the process about 90&nbsp;seconds after the stop signal. The audio phase needs longer, so raise that limit or run the end-of-run sequence before stopping the service (Q1).</li>
+          <li><strong>Keep the session alive</strong> as described in section 03.</li>
+          <li><strong>One audio file per run</strong>, uploaded at most once.</li>
+          <li><strong>Network drops are resumed</strong> within the session (section 08). A power cut or crash ends the session; the audio stays on the bot, and what happens to it is your decision. There's no automatic resume in this version.</li>
+          <li><strong>Local files and any hardware indicator are yours to decide.</strong> This contract never asks the bot to delete anything.</li>
+        </ol>
+      </section>
+
+      <section class="block" id="acceptance">
+        <h2><span class="num">10</span>Acceptance tests</h2>
+        <p>Run these against the dev control tower (<code class="inline">control-tower-dev</code>) before the field test.</p>
+        <ul class="checklist">
+          <li><div class="box"></div><div class="body"><h4>Order</h4><p>At run end: report, then <code class="inline">AudioReady</code>, then the audio phase, then <code class="inline">session-end</code> as the very last message.</p></div></li>
+          <li><div class="box"></div><div class="body"><h4>Yes</h4><p>FETCH leads to <code class="inline">UPLOADING</code>, <code class="inline">COMPLETED</code>, then <code class="inline">session-end</code>. The web app shows the file as verified.</p></div></li>
+          <li><div class="box"></div><div class="body"><h4>No</h4><p>CANCEL while waiting leads to <code class="inline">CANCELLED</code> and <code class="inline">session-end</code> within a few seconds.</p></div></li>
+          <li><div class="box"></div><div class="body"><h4>Cancel mid-upload</h4><p>CANCEL during an upload stops it within one chunk, then <code class="inline">CANCELLED</code> and <code class="inline">session-end</code>.</p></div></li>
+          <li><div class="box"></div><div class="body"><h4>Nobody answers</h4><p>With no command, the bot sends <code class="inline">EXPIRED</code> when the window ends, then <code class="inline">session-end</code>.</p></div></li>
+          <li><div class="box"></div><div class="body"><h4>Session stays alive</h4><p>During a long upload the session never shows as lost contact (telemetry continues, or the fallback applies).</p></div></li>
+          <li><div class="box"></div><div class="body"><h4>Network drop</h4><p>Pull the network mid-upload and restore it. The upload continues from the last offset, not from zero.</p></div></li>
+          <li><div class="box"></div><div class="body"><h4>Long shutdown</h4><p>Ending a test through the normal shutdown path with a 300&nbsp;MB upload completes without the process being killed.</p></div></li>
+          <li><div class="box"></div><div class="body"><h4>Repeated commands</h4><p>A duplicate FETCH doesn't start a second upload, and a late CANCEL after <code class="inline">COMPLETED</code> is ignored.</p></div></li>
+        </ul>
+      </section>
+
+      <section class="block" id="questions">
+        <h2><span class="num">11</span>Open questions for the bot team</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Question</th><th>Why we ask</th></tr></thead>
+            <tbody>
+              <tr><td class="num">Q1</td><td><strong>Can the bot delay its exit</strong> for the decision window plus an upload (possibly 15&ndash;35&nbsp;minutes)? How is the end of a test triggered: from the bot app, or by an OS shutdown?</td><td>The whole flow depends on this (rule 2).</td></tr>
+              <tr><td class="num">Q2</td><td><strong>Can telemetry keep running</strong> after the physical run, until <code class="inline">session-end</code>?</td><td>If yes, nothing changes on the server. If no, we use the fallback in section 03.</td></tr>
+              <tr><td class="num">Q3</td><td>What decision window suits you? We propose 3&ndash;5&nbsp;minutes.</td><td>It delays shutdown whenever nobody answers.</td></tr>
+              <tr><td class="num">Q4</td><td>WAV, FLAC or Opus?</td><td>This sets how long the user and the crew wait. 500&nbsp;MB of WAV takes 15&ndash;35&nbsp;minutes over the SIM. FLAC (lossless) about halves that, and Opus (speech quality) brings it down to a few minutes.</td></tr>
+              <tr><td class="num">Q5</td><td>Sample rate, bit depth and number of channels?</td><td>To estimate upload time and size storage.</td></tr>
+              <tr><td class="num">Q6</td><td>Which libcurl version is on the Jetson image?</td><td>PATCH with a read callback must work.</td></tr>
+              <tr><td class="num">Q7</td><td>Optional: can the bot set an MQTT &ldquo;Last Will&rdquo; message when it connects?</td><td>The broker would then tell us immediately if the bot drops mid-phase, instead of after a timeout. We'd agree the details separately.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>RoshAI Control Tower &middot; robot/audio/ready &middot; robot/{vin}/audio/control &middot; robot/audio/status &middot; companion to shared/proto/audio.proto (planned)</footer>
+
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+    var sections = links.map(function (a) {
+      return document.querySelector(a.getAttribute('href'));
+    });
+
+    function onScroll() {
+      var pos = window.scrollY + 120;
+      var activeIndex = 0;
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i] && sections[i].offsetTop <= pos) activeIndex = i;
+      }
+      links.forEach(function (a, i) {
+        a.classList.toggle('active', i === activeIndex);
+      });
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+</script>

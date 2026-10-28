@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Video Stream Quality Report</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 20px; background: #0f1115; color: #e6e8ee;
+         font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+  .wrap { max-width: 1150px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+  h1 { font-size: 24px; margin: 0; }
+  h2 { font-size: 18px; margin: 0; }
+  code { background:#1d212b; padding:1px 6px; border-radius:6px; font-size:12px; }
+  .muted { color: #8b90a0; font-size: 13px; margin: 6px 0 16px; }
+  .badge { padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .card { background: #171a21; border: 1px solid #262b36; border-radius: 14px; padding: 22px; margin: 18px 0; }
+  .card-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .card.collapsed .card-body, .card.collapsed .muted { display: none; }
+  .card.collapsed .collapse { transform: rotate(-90deg); }
+  .collapse { background: #1d212b; color: #aab0c0; border: 1px solid #2a3040; border-radius: 8px;
+              width: 28px; height: 28px; cursor: pointer; font-size: 14px; line-height: 1;
+              transition: transform .15s ease; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 10px; margin-top: 6px; }
+  .metric { background: #1d212b; border: 1px solid #2a3040; border-left-width: 4px; border-radius: 10px; padding: 10px 12px; }
+  .metric.good { border-left-color: #1db954; }
+  .metric.warn { border-left-color: #e8a33d; }
+  .metric.bad  { border-left-color: #e5484d; }
+  .metric-label { font-size: 12px; color: #8b90a0; margin-bottom: 3px; }
+  .metric-value { font-size: 15px; font-weight: 600; }
+  .info { display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center;
+          background: #2a3040; color: #aab0c0; border-radius: 50%; font-size: 10px; cursor: help;
+          margin-left: 5px; position: relative; }
+  .info:hover::after { content: attr(data-tip); position: absolute; left: 50%; bottom: 130%; transform: translateX(-50%);
+          width: 240px; background: #0b0d11; border: 1px solid #2a3040; color: #d7dae3; border-radius: 8px;
+          padding: 8px 10px; font-size: 11px; line-height: 1.45; z-index: 20; white-space: normal; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 18px; }
+  figure { margin: 0; background: #1d212b; border: 1px solid #2a3040; border-radius: 10px; padding: 12px; }
+  figcaption { font-size: 13px; color: #aab0c0; margin-bottom: 6px; }
+  .hint { color: #6b7183; font-size: 11px; margin-left: 6px; }
+  .plot { position: relative; }
+  .plot svg { width: 100%; height: 170px; display: block; cursor: crosshair; }
+  .tip { position: absolute; pointer-events: none; background: #0b0d11; border: 1px solid #2a3040;
+         border-radius: 8px; padding: 6px 9px; font-size: 11px; line-height: 1.5; color: #d7dae3;
+         display: none; white-space: nowrap; z-index: 10; }
+  .legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #aab0c0;
+          background: #171a21; border: 1px solid #2a3040; border-radius: 999px; padding: 3px 10px;
+          cursor: pointer; user-select: none; }
+  .chip.off { opacity: .35; text-decoration: line-through; }
+  .chip i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .grid { stroke: #2a3040; stroke-width: 1; }
+  .axis { fill: #6b7183; font-size: 10px; text-anchor: end; }
+  .axis-x { fill: #6b7183; font-size: 10px; text-anchor: middle; }
+  .freezebar { fill: #e5484d; opacity: .22; }
+  .guide { stroke: #aab0c0; stroke-width: .6; stroke-dasharray: 3 3; opacity: .5; }
+  .donut-wrap { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .donut { width: 64px; height: 64px; transform: rotate(-90deg); }
+  .donut-track { fill: none; stroke: #262b36; stroke-width: 8; }
+  .donut-val { fill: none; stroke-width: 8; stroke-linecap: round;
+               transition: stroke-dashoffset 1.1s cubic-bezier(.22,.8,.35,1); }
+  .donut-text { font-size: 20px; font-weight: 700; text-anchor: middle; transform: rotate(90deg);
+                transform-origin: 40px 40px; }
+  .donut-cap { font-size: 12px; font-weight: 600; color: #aab0c0; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #262b36; white-space: nowrap; }
+  th { color: #8b90a0; font-weight: 600; }
+  td.good { color: #1db954; } td.warn { color: #e8a33d; } td.bad { color: #e5484d; }
+  footer { color: #6b7183; font-size: 12px; margin-top: 24px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📹 Video Stream Quality Report</h1>
+    <span class="badge" style="background:#e8a33d1f;color:#e8a33d;border:1px solid #e8a33d55">⚠ WARNING — overall</span>
+  </header>
+  <p class="muted">WebRTC streams measured via <code>getStats()</code> · generated 21/10/2026, 4:36:44 pm · 1 stream(s).
+     Hover the charts for per-second values · click legend chips to toggle series · click ▾ to collapse a card.</p>
+
+  <section class="card">
+    <h2>Side-by-side comparison</h2>
+    <div class="table-wrap"><table>
+      <tr><th>Metric</th><th>vehicle1</th></tr>
+      
+  <tr><td>Startup time</td>
+  <td class="warn">7.9 s</td>
+  </tr>
+  <tr><td>Resolution</td>
+  <td class="good">1280×720</td>
+  </tr>
+  <tr><td>Bitrate (avg / min / max)</td>
+  <td class="good">7.50 / 7.23 / 7.91 Mbps</td>
+  </tr>
+  <tr><td>Latency (RTT avg)</td>
+  <td class="good">0.0 ms</td>
+  </tr>
+  <tr><td>Jitter (avg)</td>
+  <td class="good">4.6 ms</td>
+  </tr>
+  <tr><td>Frame rate (avg)</td>
+  <td class="good">30.4 fps</td>
+  </tr>
+  <tr><td>Frames dropped</td>
+  <td class="good">0 of 1793</td>
+  </tr>
+  <tr><td>Freezes / stutters</td>
+  <td class="warn">4 freezes · 1.3 s (2.2%)</td>
+  </tr>
+  <tr><td>Packet loss</td>
+  <td class="good">0.000%</td>
+  </tr>
+    </table></div>
+  </section>
+  
+  <section class="card" data-idx="0">
+    <div class="card-head">
+      <button class="collapse" title="Collapse / expand">▾</button>
+      <h2>vehicle1</h2>
+      <span class="badge" style="background:#e8a33d1f;color:#e8a33d;border:1px solid #e8a33d55">⚠ WARNING</span>
+      <div class="donut-wrap" title="Overall quality score: 90/100 — GOOD">
+        <svg class="donut" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="34" class="donut-track"/>
+          <circle cx="40" cy="40" r="34" class="donut-val"
+            style="stroke:#1db954;stroke-dasharray:213.6;stroke-dashoffset:213.6"
+            data-offset="21.4"/>
+          <text x="40" y="45" class="donut-text" style="fill:#1db954">90</text>
+        </svg>
+        <span class="donut-cap">✔ 90/100</span>
+      </div>
+    </div>
+    <p class="muted">http://127.0.0.1:8889/vehicle1 · measured 60 s · 21/10/2026, 3:44:35 pm</p>
+    <div class="card-body">
+      <div class="metrics">
+    <div class="metric warn">
+      <div class="metric-label">Startup time
+        <span class="info" data-tip="Time from page load until the first decoded video frame starts playing.">?</span></div>
+      <div class="metric-value">7.9 s</div>
+    </div>
+    <div class="metric good">
+      <div class="metric-label">Resolution
+        <span class="info" data-tip="Decoded frame size at the end of the measurement (width × height).">?</span></div>
+      <div class="metric-value">1280×720</div>
+    </div>
+    <div class="metric good">
+      <div class="metric-label">Bitrate (avg / min / max)
+        <span class="info" data-tip="Media data rate, computed from bytesReceived deltas per second. Avg/min/max across the run.">?</span></div>
+      <div class="metric-value">7.50 / 7.23 / 7.91 Mbps</div>
+    </div>
+    <div class="metric good">
+      <div class="metric-label">Latency (RTT avg)
+        <span class="info" data-tip="ICE round-trip time — network-level latency between browser and server. Lower is better; >150ms is poor.">?</span></div>
+      <div class="metric-value">0.0 ms</div>
+    </div>
+    <div class="metric good">
+      <div class="metric-label">Jitter (avg)
+        <span class="info" data-tip="Variation in packet arrival time. Sustained values above ~30ms cause visible stutter.">?</span></div>
+      <div class="metric-value">4.6 ms</div>
+    </div>
+    <div class="metric good">
+      <div class="metric-label">Frame rate (avg)
+        <span class="info" data-tip="Frames decoded per second. Below the source frame rate means frames are being skipped.">?</span></div>
+      <div class="metric-value">30.4 fps</div>
+    </div>
+    <div class="metric good">
+      <div class="metric-label">Frames dropped
+        <span class="info" data-tip="Frames received but dropped before decoding — usually decoder overload or late delivery.">?</span></div>
+      <div class="metric-value">0 of 1793</div>
+    </div>
+    <div class="metric warn">
+      <div class="metric-label">Freezes / stutters
+        <span class="info" data-tip="Moments the rendered video froze (browser-reported). % is frozen time / measured time.">?</span></div>
+      <div class="metric-value">4 freezes · 1.3 s (2.2%)</div>
+    </div>
+    <div class="metric good">
+      <div class="metric-label">Packet loss
+        <span class="info" data-tip="RTP packets lost vs received. Above 1% is usually noticeable as artifacts or stutter.">?</span></div>
+      <div class="metric-value">0.000%</div>
+    </div></div>
+      <div class="charts">
+        <figure data-chart="bitrate" data-stream="0">
+          <figcaption>Bitrate over time <span class="hint">hover for values</span></figcaption>
+          <div class="plot"><svg preserveAspectRatio="none"></svg><div class="tip"></div></div>
+          <div class="legend"></div>
+        </figure>
+        <figure data-chart="latency" data-stream="0">
+          <figcaption>Latency, jitter &amp; freezes over time <span class="hint">red bars = frozen video</span></figcaption>
+          <div class="plot"><svg preserveAspectRatio="none"></svg><div class="tip"></div></div>
+          <div class="legend"></div>
+        </figure>
+        <figure data-chart="fps" data-stream="0">
+          <figcaption>Decoded frames per second</figcaption>
+          <div class="plot"><svg preserveAspectRatio="none"></svg><div class="tip"></div></div>
+          <div class="legend"></div>
+        </figure>
+      </div>
+    </div>
+  </section>
+  <footer>Generated by generate-report.mjs from Playwright WebRTC quality test results.</footer>
+</div>
+<script id="report-data" type="application/json">{"streams":[{"name":"vehicle1","series":{"bitrate":[7.539025742574258,7.335247524752475,7.781795837462835,7.393219272369715,7.362992063492063,7.544188420019627,7.573893069306931,7.443829534192271,7.5806568338249765,7.317514257620453,7.4912903865213085,7.807366336633663,7.243226824457594,7.563332675222114,7.438911618669315,7.494007843137255,7.264,7.37986124876115,7.7675660749506905,7.7759609375,7.316675222112537,7.41998418972332,7.912166336633663,7.278485629335977,7.378140733399406,7.639245283018869,7.598414271555996,7.342423529411765,7.56862512363996,7.34952156862745,7.747545004945599,7.522025819265145,7.228784236453203,7.606186138613861,7.381828232971373,7.3450862239841435,7.643400198609733,7.392190287413281,7.540043435340573,7.645415262636274,7.555348469891412,7.416736633663366,7.814207305034552,7.337039682539682,7.431434825870647,7.39329108910891,7.827634920634921,7.3454274509803925,7.31700395256917,7.6561582591493575,7.43305304518664,7.741847675568745,7.232573673870333,7.562322834645669,7.352871287128713,7.3487968285431124,7.658043564356436,7.413895153313552,7.486382642998028],"rtt":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"jitter":[3,4,3,6,4,4,3,6,4,4,4,10,4,4,3,3,4,5,4,4,4,4,3,3,4,4,4,5,3,6,4,4,4,4,4,5,3,4,4,4,4,4,3,22,7,4,4,3,3,3,3,3,4,4,18,7,3,4,3],"fps":[30,31,30,31,30,30,31,30,30,31,30,30,31,30,30,31,31,30,30,31,31,30,30,31,30,30,30,31,30,31,30,30,31,30,30,31,30,30,31,30,30,31,30,30,30,31,30,31,30,30,31,30,31,30,31,30,30,30,31],"freeze":[0,0,0,0,0,0,0,0,0,0,0,0,0.326,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.649,0,0,0,0,0,0,0,0,0,0,0.338,0,0,0,0]}}]}</script>
+<script>
+
+const DATA = JSON.parse(document.getElementById('report-data').textContent);
+
+const W = 640, H = 170, PAD = { l: 46, r: 12, t: 12, b: 24 };
+const NS = 'http://www.w3.org/2000/svg';
+
+function svgEl(tag, attrs = {}) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil((v * 1.12) / p) * p;
+}
+
+/** Generic interactive line chart with freeze overlay, tooltip and legend toggles. */
+function mountChart(fig, seriesCfg, freezeArr) {
+  const svg = fig.querySelector('svg');
+  const tip = fig.querySelector('.tip');
+  const legend = fig.querySelector('.legend');
+  const n = Math.max(1, ...seriesCfg.map((s) => s.values.length));
+  const state = { on: seriesCfg.map(() => true) };
+
+  const X = (i) => PAD.l + (i / (n - 1)) * (W - PAD.l - PAD.r);
+  const xIndex = (x) => clamp(Math.round(((x - PAD.l) / (W - PAD.l - PAD.r)) * (n - 1)), 0, n - 1);
+
+  function draw() {
+    svg.innerHTML = '';
+    const visible = seriesCfg.filter((_, i) => state.on[i]);
+    const max = niceMax(Math.max(1e-9, ...visible.flatMap((s) => s.values.filter((v) => v != null))));
+    const Y = (v) => PAD.t + (1 - v / max) * (H - PAD.t - PAD.b);
+
+    // grid + y labels
+    for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+      const y = PAD.t + f * (H - PAD.t - PAD.b);
+      svg.appendChild(svgEl('line', { x1: PAD.l, y1: y, x2: W - PAD.r, y2: y, class: 'grid' }));
+      const t = svgEl('text', { x: PAD.l - 5, y: y + 3, class: 'axis' });
+      t.textContent = (max * (1 - f)).toFixed(max >= 10 ? 0 : 1);
+      svg.appendChild(t);
+    }
+    // x labels (0s, mid, end)
+    for (const f of [0, 0.5, 1]) {
+      const t = svgEl('text', { x: X(f * (n - 1)), y: H - 8, class: 'axis-x' });
+      t.textContent = Math.round(f * (n - 1)) + 's';
+      svg.appendChild(t);
+    }
+    // freeze overlay
+    (freezeArr || []).forEach((d, i) => {
+      if (d > 0) {
+        svg.appendChild(svgEl('rect', {
+          x: X(i) - (W - PAD.l - PAD.r) / (n - 1) / 2, y: PAD.t,
+          width: Math.max(2, (W - PAD.l - PAD.r) / (n - 1)), height: H - PAD.t - PAD.b,
+          class: 'freezebar',
+        }));
+      }
+    });
+    // series lines
+    seriesCfg.forEach((s, i) => {
+      if (!state.on[i]) return;
+      const pts = s.values.map((v, j) => (v == null ? null : X(j).toFixed(1) + ',' + Y(v).toFixed(1)))
+        .filter(Boolean).join(' ');
+      svg.appendChild(svgEl('polyline', { points: pts, fill: 'none', stroke: s.color, 'stroke-width': 1.7, 'stroke-linejoin': 'round' }));
+    });
+    // hover guide
+    const guide = svgEl('line', { x1: 0, y1: PAD.t, x2: 0, y2: H - PAD.b, class: 'guide', style: 'display:none' });
+    svg.appendChild(guide);
+
+    svg.onmousemove = (ev) => {
+      const rect = svg.getBoundingClientRect();
+      const sx = (ev.clientX - rect.left) * (W / rect.width);
+      const i = xIndex(sx);
+      guide.setAttribute('x1', X(i)); guide.setAttribute('x2', X(i));
+      guide.style.display = '';
+      let html = '<b>t = ' + i + ' s</b>';
+      seriesCfg.forEach((s, si) => {
+        if (!state.on[si]) return;
+        const v = s.values[i];
+        html += '<br><span style="color:' + s.color + '">●</span> ' + s.name + ': <b>' + (v == null ? 'n/a' : (typeof v === 'number' ? v.toFixed(2) : v)) + ' ' + s.unit + '</b>';
+      });
+      if (freezeArr && freezeArr[i] > 0) {
+        html += '<br><span style="color:#e5484d">🔴 frozen ' + freezeArr[i].toFixed(2) + ' s</span>';
+      }
+      tip.innerHTML = html;
+      tip.style.display = 'block';
+      const px = Math.min(Math.max(ev.clientX - rect.left + 12, 0), rect.width - 150);
+      const py = Math.max(ev.clientY - rect.top - 10, 0);
+      tip.style.left = px + 'px'; tip.style.top = py + 'px';
+    };
+    svg.onmouseleave = () => { tip.style.display = 'none'; guide.style.display = 'none'; };
+  }
+
+  // legend chips (clickable toggles)
+  seriesCfg.forEach((s, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = '<i style="background:' + s.color + '"></i>' + s.name + ' (' + s.unit + ')';
+    chip.onclick = () => { state.on[i] = !state.on[i]; chip.classList.toggle('off', !state.on[i]); draw(); };
+    legend.appendChild(chip);
+  });
+
+  draw();
+}
+
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+
+const CHART_DEFS = {
+  bitrate: (s) => [{ name: 'bitrate', color: '#4f9cf9', unit: 'Mbps', values: s.series.bitrate }],
+  latency: (s) => [
+    { name: 'RTT', color: '#e5484d', unit: 'ms', values: s.series.rtt },
+    { name: 'jitter', color: '#e8a33d', unit: 'ms', values: s.series.jitter },
+  ],
+  fps: (s) => [{ name: 'fps', color: '#1db954', unit: 'fps', values: s.series.fps }],
+};
+
+document.querySelectorAll('figure[data-chart]').forEach((fig) => {
+  const s = DATA.streams[Number(fig.dataset.stream)];
+  const freeze = fig.dataset.chart === 'latency' ? s.series.freeze : null;
+  mountChart(fig, CHART_DEFS[fig.dataset.chart](s), freeze);
+});
+
+// animate score rings
+setTimeout(() => {
+  document.querySelectorAll('.donut-val').forEach((c) => {
+    c.style.strokeDashoffset = c.dataset.offset;
+  });
+}, 60);
+
+// collapse cards
+document.querySelectorAll('.collapse').forEach((btn) => {
+  btn.onclick = () => btn.closest('.card').classList.toggle('collapsed');
+});
+
+</script>
+</body>
+</html>

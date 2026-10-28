@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package roshai.mqtt.v1;
+
+// Published by the backend on the single shared robot/heartbeat topic
+// (see shared/src/mqtt/topics.ts's HEARTBEAT_TOPIC) every 500ms while any
+// vehicle session is active — one publish reaches every connected bot,
+// each independently tracking its own "3 consecutive missed = stop"
+// deadman-switch off this same shared tick (see
+// backend/src/lib/heartbeat-service.ts). Business requirement (confirmed
+// Aug 2026): if the bot does not receive 3 consecutive heartbeats, it
+// considers the control-center link lost and stops the vehicle, reporting
+// back via the stop-event topic (cause: network-loss).
+//
+// Field shape confirmed directly by the bot team (Aug 2026): sequence as
+// field 1 (uint64), timestamp as epoch milliseconds in field 2
+// (timestamp_ms, int64) — supersedes our earlier int32/ISO-8601 guess.
+// Message name kept as HeartbeatPayload (our own internal convention,
+// matching SessionPayload/TelemetryPayload/etc.) rather than their
+// "Heartbeat" — this is safe: protobuf wire compatibility depends only on
+// field numbers and wire types, never on message or field names.
+//
+// Deliberately kept fleet-wide/broadcast rather than per-vehicle even
+// with multi-vehicle support: the message carries no vehicle-specific
+// content, and MQTT already fans a published message out to every
+// subscriber independently — a per-vin topic would mean one publish per
+// connected bot per tick for no safety benefit. No vin_number field for
+// the same reason: the payload has nothing vehicle-specific to say.
+message HeartbeatPayload {
+  uint64 sequence = 1;
+  int64 timestamp_ms = 2;
+}
