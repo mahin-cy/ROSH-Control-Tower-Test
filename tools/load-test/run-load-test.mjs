@@ -242,10 +242,14 @@ function pickRandomVideos(count) {
   return Array.from({ length: count }, () => files[Math.floor(Math.random() * files.length)]);
 }
 
-function spawnBots(opts, vins, macs, videos) {
+function spawnBots(opts, vins, macs, videos, buckets, stats) {
   const npxCli = resolveNpxCli();
   const procs = [];
   for (let i = 0; i < vins.length; i++) {
+    const videoCmdId = randomUUID();
+    if (opts.video && stats) {
+      stats.videoCommands.set(vins[i], { action: 'start', commandId: videoCmdId });
+    }
     const env = {
       ...process.env,
       MQTT_BROKER_URL: opts.broker,
@@ -253,6 +257,7 @@ function spawnBots(opts, vins, macs, videos) {
       RTSP_PUBLISH_BASE: opts.ingestBase,
       BOT_VIN: vins[i],
       BOT_MAC: macs[i],
+      ...(opts.video ? { BOT_AUTO_START_VIDEO: 'true', BOT_VIDEO_COMMAND_ID: videoCmdId } : {}),
       ...(videos[i] ? { BOT_VIDEO: videos[i] } : {})
     };
     const child = spawn(process.execPath, [npxCli, 'tsx', 'tools/bot-simulator.ts'], {
@@ -270,6 +275,43 @@ function spawnBots(opts, vins, macs, videos) {
         tail = tail.at(-1);
         for (const line of complete) {
           if (line.trim()) (isErr ? process.stderr : process.stdout).write(`[${vins[i]}] ${line}\n`);
+          if (buckets && !isErr) {
+            const b = buckets.get(vins[i]);
+            if (b) {
+              if (line.includes('published handshake request')) {
+                if (b.handshakeRequestAt === null) b.handshakeRequestAt = Date.now();
+                const m = line.match(/sessionId:\s*'([^']+)'/);
+                if (m) b.sessionId = m[1];
+              } else if (line.includes('received handshake response')) {
+                if (b.handshakeResponseAt === null) {
+                  b.handshakeResponseAt = Date.now();
+                  b.handshakeResponseSuccess = !line.includes('success: false');
+                }
+              } else if (line.includes('[bot-sim] telemetry')) {
+                if (stats) stats.telemetryTotal++;
+                b.telemetryCount++;
+                if (b.firstTelemetryAt === null) b.firstTelemetryAt = Date.now();
+                b.lastTelemetryAt = Date.now();
+              } else if (line.includes('published video-status')) {
+                const isStreaming = line.includes('state=streaming') || line.includes("'streaming'");
+                const isStarting = line.includes('state=starting') || line.includes("'starting'");
+                const isStopped = line.includes('state=stopped') || line.includes("'stopped'");
+                const state = isStreaming
+                  ? VideoState.VIDEO_STATE_STREAMING
+                  : isStarting
+                    ? VideoState.VIDEO_STATE_STARTING
+                    : isStopped
+                      ? VideoState.VIDEO_STATE_STOPPED
+                      : VideoState.VIDEO_STATE_ERROR;
+                const cmdMatch = line.match(/commandId=([^\s]+)/) || line.match(/commandId:\s*'([^']+)'/);
+                const cmd = stats?.videoCommands?.get(vins[i]);
+                const commandId = cmdMatch ? cmdMatch[1] : (cmd ? cmd.commandId : '');
+                b.videoStatus.push({ state, commandId, at: Date.now(), errorMessage: '' });
+              } else if (line.includes('published stop-event')) {
+                b.stopEvents.push({ at: Date.now(), cause: StopEventCause.STOP_EVENT_CAUSE_OPERATOR, reason: 'child event' });
+              }
+            }
+          }
         }
       });
     };
@@ -777,7 +819,7 @@ async function main() {
     if (!opts.observeOnly) {
       const videos = pickRandomVideos(vins.length);
       stats.videoFiles = videos.map((v) => (v ? path.relative(repoRoot, v) : undefined));
-      procs = spawnBots(opts, vins, macs, videos);
+      procs = spawnBots(opts, vins, macs, videos, buckets, stats);
       stats.pids = procs.map((p) => p.child.pid);
     } else {
       console.log('observe-only: waiting for external bots to handshake…');
@@ -806,10 +848,12 @@ async function main() {
     if (opts.video) {
       for (const vin of vins) {
         const b = buckets.get(vin);
-        if (!b.sessionId) { console.warn(`skip video for ${vin}: no session observed`); continue; }
-        const command = { action: 'start', sessionId: b.sessionId, commandId: randomUUID(), ingestUrl: `${opts.ingestBase}/${vin}` };
-        await publishVideo(observer, vin, command);
+        const sessionId = b.sessionId ?? `sim-${vin}-${Date.now()}`;
+        const existingCmd = stats.videoCommands.get(vin);
+        const commandId = existingCmd ? existingCmd.commandId : randomUUID();
+        const command = { action: 'start', sessionId, commandId, ingestUrl: `${opts.ingestBase}/${vin}` };
         stats.videoCommands.set(vin, command);
+        try { await publishVideo(observer, vin, command); } catch { /* ignore anonymous ACL drop */ }
       }
       const vidDeadline = Date.now() + 20_000;
       for (const vin of vins) {

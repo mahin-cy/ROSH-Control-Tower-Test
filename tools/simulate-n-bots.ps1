@@ -62,6 +62,11 @@ try {
     $psi.EnvironmentVariables['BOT_VIN'] = $vin
     $psi.EnvironmentVariables['BOT_MAC'] = $mac
     if ($video) { $psi.EnvironmentVariables['BOT_VIDEO'] = $video }
+    if ($env:BOT_AUTO_START_VIDEO) { $psi.EnvironmentVariables['BOT_AUTO_START_VIDEO'] = $env:BOT_AUTO_START_VIDEO }
+    if ($env:RTSP_PUBLISH_BASE) { $psi.EnvironmentVariables['RTSP_PUBLISH_BASE'] = $env:RTSP_PUBLISH_BASE }
+    if ($env:MQTT_BROKER_URL) { $psi.EnvironmentVariables['MQTT_BROKER_URL'] = $env:MQTT_BROKER_URL }
+    if ($env:BACKEND_HTTP_URL) { $psi.EnvironmentVariables['BACKEND_HTTP_URL'] = $env:BACKEND_HTTP_URL }
+    if ($env:NODE_TLS_REJECT_UNAUTHORIZED) { $psi.EnvironmentVariables['NODE_TLS_REJECT_UNAUTHORIZED'] = $env:NODE_TLS_REJECT_UNAUTHORIZED }
 
     Write-Host "starting bot $i/$Count`: $vin ($mac)$(if ($video) { " video=$video" })"
     $procs += [System.Diagnostics.Process]::Start($psi)

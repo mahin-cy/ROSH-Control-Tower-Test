@@ -176,11 +176,24 @@ const mockVideoDir =
 // undefined when the mapped file doesn't exist — startVideo reports that as
 // a video-status error, same shape as the real bot's "camera not found".
 function resolveMockVideo(): string | undefined {
-  if (process.env.BOT_VIDEO) return process.env.BOT_VIDEO;
+  if (process.env.BOT_VIDEO && existsSync(process.env.BOT_VIDEO)) return process.env.BOT_VIDEO;
   const digits = /(\d+)\s*$/.exec(vin);
   const n = digits ? Number(digits[1]) : 1;
-  const file = path.join(mockVideoDir, n <= 1 ? 'mock_vehicle.mp4' : `mock_vehicle${n}.mp4`);
-  return existsSync(file) ? file : undefined;
+  const directFile = path.join(mockVideoDir, n <= 1 ? 'mock_vehicle.mp4' : `mock_vehicle${n}.mp4`);
+  if (existsSync(directFile)) return directFile;
+
+  // If specific index file isn't present, cycle through available mock videos
+  try {
+    const available = readdirSync(mockVideoDir)
+      .filter((f) => /\.(mp4|mkv|mov|avi)$/i.test(f))
+      .sort();
+    if (available.length > 0) {
+      return path.join(mockVideoDir, available[(n - 1) % available.length]);
+    }
+  } catch {
+    // mockVideoDir missing/unreadable
+  }
+  return undefined;
 }
 const mockVideo = resolveMockVideo();
 
@@ -251,7 +264,7 @@ function publishVideoStatus(
     if (err)
       console.error(`[bot-sim] publish failed on ${MQTT_TOPICS_INBOUND.videoStatus}:`, err.message);
   });
-  console.log('[bot-sim] published video-status', { vin, state, commandId, errorMessage });
+  console.log(`[bot-sim] published video-status: vin=${vin} state=${state} commandId=${commandId}`);
 }
 
 function stopFfmpeg(reportStopped: boolean): void {
@@ -283,7 +296,11 @@ function startFfmpeg(command: { commandId: string; ingestUrl?: string }): void {
     return;
   }
 
-  const url = command.ingestUrl ?? `${rtspPublishBase}/${vin}`;
+  // If RTSP_PUBLISH_BASE was explicitly set in the environment, prefer it over
+  // whatever stale/internal ingestUrl the backend might have sent.
+  const url = process.env.RTSP_PUBLISH_BASE
+    ? `${rtspPublishBase}/${vin}`
+    : (command.ingestUrl ?? `${rtspPublishBase}/${vin}`);
   // -stream_loop -1: loop the file indefinitely (a vehicle camera never
   // EOFs). -c copy: no re-encode, same as the manual mock publishing —
   // cheap, and these files are already H.264. -rtsp_transport tcp: required
@@ -451,6 +468,11 @@ client.on('connect', () => {
   });
 
   publishHandshake(client);
+
+  // If requested by the load-test harness, auto-start video streaming immediately
+  if (process.env.BOT_AUTO_START_VIDEO === 'true') {
+    startFfmpeg({ commandId: process.env.BOT_VIDEO_COMMAND_ID ?? 'auto-start' });
+  }
 
   // Simulates the real bot's required deadman-switch behavior: if no
   // heartbeat arrives within 3 intervals, treat the control-center link

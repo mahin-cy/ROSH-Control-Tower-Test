@@ -40,6 +40,27 @@ test('measure WebRTC live stream quality', async ({
     });
   });
 
+  // MediaMTX behind Traefik prefix (/webrtc) returns WHEP session Location headers
+  // omitting /webrtc (e.g. /TEST-VIN-001/whep/<uuid>). When reader.js sends subsequent
+  // PATCH (ICE candidate) requests to that path, Traefik routes them to the React frontend
+  // SPA, returning HTTP 200 instead of HTTP 204. Rewrite missing /webrtc in WHEP paths so
+  // requests reach MediaMTX cleanly.
+  if (streamUrl.includes('/webrtc/')) {
+    await page.route(
+      (url) => url.pathname.includes('/whep/'),
+      async (route) => {
+        const origUrl = route.request().url();
+        if (!origUrl.includes('/webrtc/')) {
+          const newUrl = origUrl.replace(/(https?:\/\/[^/]+)\/([^/]+\/whep\/.*)/, '$1/webrtc/$2');
+          const response = await page.request.fetch(route.request(), { url: newUrl });
+          await route.fulfill({ response });
+        } else {
+          await route.continue();
+        }
+      }
+    );
+  }
+
   await page.goto(streamUrl, {
     waitUntil: 'domcontentloaded',
   });

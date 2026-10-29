@@ -38,7 +38,7 @@ const botCount = Number(merged.TEST_BOT_COUNT || 3);
 const VINS = (merged.TEST_VINS && merged.TEST_VINS.trim().length > 0)
   ? merged.TEST_VINS.split(',').map((v) => v.trim()).filter(Boolean)
   : Array.from({ length: botCount }, (_, i) => `TEST-VIN-${String(i + 1).padStart(3, '0')}`);
-const streams = VINS.map((vin) => ({ name: vin.toLowerCase(), url: `${WHEP_BASE}/${vin}` }));
+const streams = VINS.map((vin) => ({ name: vin.toLowerCase(), url: `${WHEP_BASE}/${vin}/` }));
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -57,6 +57,7 @@ export default defineConfig({
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
+    ignoreHTTPSErrors: true,
     /* Base URL to use in actions like `await page.goto('')`. */
     // baseURL: 'http://localhost:3000',
 
