@@ -5,7 +5,12 @@ import fs from 'node:fs/promises';
 test('measure WebRTC live stream quality', async ({
   page,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  const durationSec = Number(
+    process.env.TEST_DURATION ??
+    (testInfo.project.use as { env?: Record<string, string> })?.env?.TEST_DURATION ??
+    60
+  );
+  test.setTimeout((durationSec + 60) * 1000);
 
   // The stream URL comes from the project's `use.env`
   // (see the `streams` list in playwright.config.ts), or
@@ -202,11 +207,11 @@ test('measure WebRTC live stream quality', async ({
 
   const samples = [];
 
-  // One sample per second for 60 seconds.
-  for (let i = 0; i < 60; i++) {
+  // One sample per second for durationSec seconds.
+  for (let i = 0; i < durationSec; i++) {
     samples.push(await readStats());
 
-    if (i < 59) {
+    if (i < durationSec - 1) {
       await page.waitForTimeout(1_000);
     }
   }

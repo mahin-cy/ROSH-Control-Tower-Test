@@ -16,7 +16,7 @@
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -143,10 +143,31 @@ function parseArgs(argv) {
   return opts;
 }
 
-// Interruptible sleep: Ctrl+C (SIGINT) flips `interrupted` and the loop
-// exits instead of waiting out the full measurement window.
+// Interruptible sleep: Ctrl+C (SIGINT), typing 'q' on stdin, or creating a
+// `.stop-load-test` file flips `interrupted` and triggers graceful teardown.
 let interrupted = false;
 process.on('SIGINT', () => { interrupted = true; });
+if (process.stdin) {
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', (chunk) => {
+    const s = chunk.toString().trim().toLowerCase();
+    if (s === 'q' || s === 'stop' || s === 'exit') {
+      interrupted = true;
+    }
+  });
+}
+const stopFile = path.join(repoRoot, '.stop-load-test');
+try { if (existsSync(stopFile)) unlinkSync(stopFile); } catch {}
+const stopInterval = setInterval(() => {
+  try {
+    if (existsSync(stopFile)) {
+      unlinkSync(stopFile);
+      interrupted = true;
+      clearInterval(stopInterval);
+    }
+  } catch {}
+}, 400);
+stopInterval.unref();
 const sleep = async (ms) => {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline && !interrupted) await new Promise((r) => setTimeout(r, 100));
