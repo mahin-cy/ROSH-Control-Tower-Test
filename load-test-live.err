@@ -1,3 +1,103 @@
 MOSQUITTO_BACKEND_PASSWORD not found in .env.loadtest or docker/.env — observer will connect anonymously
 SEED_ADMIN_EMAIL/PASSWORD not found in docker/.env — skipping registry check
+[TEST-VIN-009] [bot-sim] connection closed
+[TEST-VIN-009] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-005] [bot-sim] connection closed
+[TEST-VIN-005] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-005] [bot-sim] reconnecting...
+[TEST-VIN-004] [bot-sim] connection closed
+[TEST-VIN-004] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-004] [bot-sim] reconnecting...
+[TEST-VIN-019] [bot-sim] connection closed
+[TEST-VIN-019] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-019] [bot-sim] reconnecting...
+[TEST-VIN-021] [bot-sim] connection closed
+[TEST-VIN-021] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-021] [bot-sim] reconnecting...
+[TEST-VIN-008] [bot-sim] connection closed
+[TEST-VIN-008] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-008] [bot-sim] reconnecting...
+[TEST-VIN-028] [bot-sim] connection closed
+[TEST-VIN-028] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-028] [bot-sim] reconnecting...
+[TEST-VIN-003] [bot-sim] connection closed
+[TEST-VIN-003] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-003] [bot-sim] reconnecting...
+[TEST-VIN-006] [bot-sim] connection closed
+[TEST-VIN-006] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-006] [bot-sim] reconnecting...
+[TEST-VIN-015] [bot-sim] connection closed
+[TEST-VIN-015] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-015] [bot-sim] reconnecting...
+[TEST-VIN-010] [bot-sim] connection closed
+[TEST-VIN-010] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-010] [bot-sim] reconnecting...
+[TEST-VIN-029] [bot-sim] connection closed
+[TEST-VIN-029] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-029] [bot-sim] reconnecting...
+[TEST-VIN-001] [bot-sim] connection closed
+[TEST-VIN-001] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-001] [bot-sim] reconnecting...
+[TEST-VIN-020] [bot-sim] connection closed
+[TEST-VIN-020] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-020] [bot-sim] reconnecting...
+[TEST-VIN-026] [bot-sim] connection closed
+[TEST-VIN-026] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-026] [bot-sim] reconnecting...
+[TEST-VIN-022] [bot-sim] connection closed
+[TEST-VIN-022] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-022] [bot-sim] reconnecting...
+[TEST-VIN-016] [bot-sim] connection closed
+[TEST-VIN-016] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-016] [bot-sim] reconnecting...
+[TEST-VIN-017] [bot-sim] connection closed
+[TEST-VIN-017] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-017] [bot-sim] reconnecting...
+[TEST-VIN-012] [bot-sim] connection closed
+[TEST-VIN-012] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-012] [bot-sim] reconnecting...
+[TEST-VIN-018] [bot-sim] connection closed
+[TEST-VIN-018] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-018] [bot-sim] reconnecting...
+[TEST-VIN-030] [bot-sim] connection closed
+[TEST-VIN-030] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-030] [bot-sim] reconnecting...
+[TEST-VIN-027] [bot-sim] connection closed
+[TEST-VIN-027] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-027] [bot-sim] reconnecting...
+[TEST-VIN-023] [bot-sim] connection closed
+[TEST-VIN-023] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-023] [bot-sim] reconnecting...
+[TEST-VIN-014] [bot-sim] connection closed
+[TEST-VIN-014] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-014] [bot-sim] reconnecting...
+[TEST-VIN-002] [bot-sim] connection closed
+[TEST-VIN-002] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-002] [bot-sim] reconnecting...
+[TEST-VIN-007] [bot-sim] connection closed
+[TEST-VIN-007] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-007] [bot-sim] reconnecting...
+[TEST-VIN-013] [bot-sim] connection closed
+[TEST-VIN-013] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-013] [bot-sim] reconnecting...
+[TEST-VIN-025] [bot-sim] connection closed
+[TEST-VIN-025] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-025] [bot-sim] reconnecting...
+[TEST-VIN-024] [bot-sim] connection closed
+[TEST-VIN-024] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-024] [bot-sim] reconnecting...
+[TEST-VIN-011] [bot-sim] connection closed
+[TEST-VIN-011] [bot-sim] *** no heartbeat for >1800ms — signal lost, stopping vehicle
+[TEST-VIN-011] [bot-sim] reconnecting...
+[TEST-VIN-009] [bot-sim] reconnecting...
+video STOP for TEST-VIN-001 failed: video control publish timed out
+video STOP for TEST-VIN-002 failed: video control publish timed out
+video STOP for TEST-VIN-003 failed: video control publish timed out
+video STOP for TEST-VIN-004 failed: video control publish timed out
+video STOP for TEST-VIN-005 failed: video control publish timed out
+video STOP for TEST-VIN-006 failed: video control publish timed out
+video STOP for TEST-VIN-007 failed: video control publish timed out
+video STOP for TEST-VIN-008 failed: video control publish timed out
+video STOP for TEST-VIN-009 failed: video control publish timed out
+video STOP for TEST-VIN-010 failed: video control publish timed out
 SEED_ADMIN_EMAIL/PASSWORD not found in docker/.env — skipping registry check

@@ -246,25 +246,28 @@ const unifiedRows = fusedBots.map((b) => {
 
   const handshake = lt?.checks?.handshake?.pass ? `${lt.checks.handshake.latencyMs} ms` : (lt ? 'FAIL' : 'n/a');
   const telemetry = lt?.checks?.telemetry?.pass ? `${lt.checks.telemetry.ratePerSec}/s` : (lt ? 'FAIL' : 'n/a');
-  const vidStatus = lt?.checks?.video?.statusSequence?.join(' → ') ?? (lt ? 'n/a' : 'active');
-  const res = wt?.resolution ?? 'n/a';
-  const fps = wt?.avgFps ?? 'n/a';
-  const bitrate = wt?.avgBitrate ?? 'n/a';
-  const rtt = wt?.avgRtt ?? 'n/a';
-  const score = wt ? `${wt.score}/100` : 'n/a';
+  const isTelemetryOnly = lt?.checks?.video?.skipped;
+  const vidStatus = isTelemetryOnly
+    ? 'telemetry-only'
+    : (lt?.checks?.video?.statusSequence?.join(' → ') ?? (lt ? 'n/a' : 'active'));
+  const res = wt?.resolution ?? '<span style="color:var(--text-muted)">—</span>';
+  const fps = wt?.avgFps ?? '<span style="color:var(--text-muted)">—</span>';
+  const bitrate = wt?.avgBitrate ?? '<span style="color:var(--text-muted)">—</span>';
+  const rtt = wt?.avgRtt ?? '<span style="color:var(--text-muted)">—</span>';
+  const score = wt ? `${wt.score}/100` : '<span style="color:var(--text-muted);font-size:11px">—</span>';
 
-  const statusLabel = b.overallPass ? 'PASS' : 'WARN';
-  const statusColor = b.overallPass ? 'good' : 'warn';
+  const statusLabel = wt ? (b.overallPass ? 'PASS' : 'WARN') : (b.protocolPass ? (isTelemetryOnly ? 'PASS (TELEMETRY)' : 'PASS (INGEST)') : 'FAIL');
+  const statusColor = wt ? (b.overallPass ? 'good' : 'warn') : (b.protocolPass ? 'good' : 'bad');
 
   return `<tr>
     <td><b>${esc(b.vin)}</b></td>
     <td>${handshake}</td>
     <td>${telemetry}</td>
     <td><code class="pipe-code">${esc(vidStatus)}</code></td>
-    <td>${esc(res)}</td>
-    <td>${esc(fps)}</td>
-    <td>${esc(bitrate)}</td>
-    <td>${esc(rtt)}</td>
+    <td>${res}</td>
+    <td>${fps}</td>
+    <td>${bitrate}</td>
+    <td>${rtt}</td>
     <td><b>${score}</b></td>
     <td><span class="badge" style="${badgeStyle[statusColor]}">${statusLabel}</span></td>
   </tr>`;
@@ -402,6 +405,67 @@ const htmlContent = `<!DOCTYPE html>
   .kpi-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; }
   .kpi-value { font-size: 20px; font-weight: 700; margin-top: 4px; }
   .kpi-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Thresholds Reference Panel (Collapsed by default) */
+  details.thresholds-panel {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-default);
+  }
+  summary.thresholds-summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    padding: 4px 0;
+  }
+  summary.thresholds-summary::-webkit-details-marker { display: none; }
+  .thresholds-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .thresholds-title:hover { color: var(--text-primary); }
+  .thresholds-toggle-hint {
+    font-size: 12px;
+    color: var(--color-blue);
+    font-weight: 500;
+  }
+  .thresholds-body {
+    margin-top: 10px;
+  }
+  .thresholds-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+  }
+  table.thresholds-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: var(--bg-surface);
+  }
+  table.thresholds-table th, table.thresholds-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border-default);
+    text-align: left;
+  }
+  table.thresholds-table th {
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  table.thresholds-table tr:last-child td { border-bottom: none; }
+  table.thresholds-table td.col-metric { font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+  table.thresholds-table td.col-pass { color: var(--color-green); font-weight: 600; }
+  table.thresholds-table td.col-warn { color: var(--color-yellow); font-weight: 600; }
+  table.thresholds-table td.col-fail { color: var(--color-red); font-weight: 600; }
 
   /* Tab Navigation */
   .tabs-nav {
@@ -544,7 +608,7 @@ const htmlContent = `<!DOCTYPE html>
     <div class="banner-meta">
       <b>Target:</b> ${esc(loadTest?.config?.broker ?? 'Local/Dev Stack')} &nbsp;·&nbsp;
       <b>Window:</b> ${esc(loadTest?.config?.durationSeconds ?? 600)}s &nbsp;·&nbsp;
-      <b>Active Bots:</b> ${totalBots} vehicles &nbsp;·&nbsp;
+      <b>Active Bots:</b> ${totalBots} vehicles ${fusedBots.filter(b => !b.lt?.checks?.video?.skipped).length < totalBots ? `(${fusedBots.filter(b => !b.lt?.checks?.video?.skipped).length} video streams, ${webrtcRuns.length} WebRTC probes)` : ''} &nbsp;·&nbsp;
       <b>Generated:</b> ${new Date().toLocaleString()}
     </div>
 
@@ -557,11 +621,11 @@ const htmlContent = `<!DOCTYPE html>
         <div class="kpi-sub">0 Network-loss events</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Live Video Streams</div>
+        <div class="kpi-label">Active Video Streams</div>
         <div class="kpi-value" style="color:${videoPassedCount === totalBots ? 'var(--color-green)' : 'var(--color-yellow)'}">
-          ${videoPassedCount}/${totalBots}
+          ${fusedBots.filter(b => !b.lt?.checks?.video?.skipped).length}/${fusedBots.filter(b => !b.lt?.checks?.video?.skipped).length}
         </div>
-        <div class="kpi-sub">${totalFreezes} freeze occurrences</div>
+        <div class="kpi-sub">${webrtcRuns.length} Probes &bull; ${totalBots - fusedBots.filter(b => !b.lt?.checks?.video?.skipped).length} Telemetry-only</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Average Fleet FPS</div>
@@ -579,6 +643,105 @@ const htmlContent = `<!DOCTYPE html>
         <div class="kpi-sub">ICE PeerConnection RTT</div>
       </div>
     </div>
+
+    <!-- Evaluation Thresholds (Collapsed by Default) -->
+    <details class="thresholds-panel">
+      <summary class="thresholds-summary">
+        <span class="thresholds-title">
+          <span>📐 Evaluation Thresholds (Pass / Warning / Failed)</span>
+        </span>
+        <span class="thresholds-toggle-hint">Click to expand</span>
+      </summary>
+
+      <div class="thresholds-body">
+        <div class="thresholds-table-wrap">
+          <table class="thresholds-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Pass</th>
+                <th>Warning</th>
+                <th>Failed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-metric">Frame Rate (Avg FPS)</td>
+                <td class="col-pass">&ge; 25.0 fps</td>
+                <td class="col-warn">15.0 – 24.9 fps</td>
+                <td class="col-fail">&lt; 15.0 fps</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Round-Trip Latency (RTT)</td>
+                <td class="col-pass">&le; 150 ms</td>
+                <td class="col-warn">151 – 350 ms</td>
+                <td class="col-fail">&gt; 350 ms</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Video Bitrate</td>
+                <td class="col-pass">&ge; 0.50 Mbps</td>
+                <td class="col-warn">0.20 – 0.49 Mbps</td>
+                <td class="col-fail">&lt; 0.20 Mbps</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Packet Loss</td>
+                <td class="col-pass">&le; 0.10%</td>
+                <td class="col-warn">0.11% – 1.00%</td>
+                <td class="col-fail">&gt; 1.00%</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Freezes / Stutters (% duration)</td>
+                <td class="col-pass">&le; 3.0%</td>
+                <td class="col-warn">3.1% – 15.0%</td>
+                <td class="col-fail">&gt; 15.0%</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Network Jitter</td>
+                <td class="col-pass">&le; 20 ms</td>
+                <td class="col-warn">21 – 50 ms</td>
+                <td class="col-fail">&gt; 50 ms</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Stream Startup Time</td>
+                <td class="col-pass">&le; 6.0 s</td>
+                <td class="col-warn">6.1 – 10.0 s</td>
+                <td class="col-fail">&gt; 10.0 s</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Frames Dropped</td>
+                <td class="col-pass">0</td>
+                <td class="col-warn">1 – 50</td>
+                <td class="col-fail">&gt; 50</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Quality Score</td>
+                <td class="col-pass">80 – 100</td>
+                <td class="col-warn">60 – 79</td>
+                <td class="col-fail">&lt; 60</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Handshake Latency</td>
+                <td class="col-pass">&le; 500 ms</td>
+                <td class="col-warn">501 – 2000 ms</td>
+                <td class="col-fail">&gt; 5000 ms / unack</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Telemetry Rate</td>
+                <td class="col-pass">&ge; 0.80 Hz</td>
+                <td class="col-warn">0.50 – 0.79 Hz</td>
+                <td class="col-fail">&lt; 0.50 Hz</td>
+              </tr>
+              <tr>
+                <td class="col-metric">Video Pipeline Status</td>
+                <td class="col-pass">starting &rarr; streaming</td>
+                <td class="col-warn">transition &gt; 10s</td>
+                <td class="col-fail">error / stopped</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
   </header>
 
   <nav class="tabs-nav">

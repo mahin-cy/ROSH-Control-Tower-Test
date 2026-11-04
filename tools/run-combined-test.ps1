@@ -14,8 +14,10 @@
 # ==============================================================================
 param(
   [int]$Count = 10,
+  [int]$Streams = 0,
   [int]$DurationSeconds = 600,
   [int]$Workers = 10,
+  [int]$Viewers = 0,
   [switch]$SkipPreflight = $false
 )
 
@@ -23,13 +25,22 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Resolve-Path "$PSScriptRoot\..").Path
 $repoRoot = (Get-Location).Path
 
+# Determine video stream count (if $Streams > 0 and <= $Count, only $Streams bots stream video, remainder are telemetry-only)
+$effectiveStreams = if ($Streams -gt 0 -and $Streams -le $Count) { $Streams } else { $Count }
+
+# Determine viewer count (if not specified or 0, view all $effectiveStreams, otherwise sample $Viewers)
+$effectiveViewers = if ($Viewers -gt 0 -and $Viewers -le $effectiveStreams) { $Viewers } else { $effectiveStreams }
+if ($Workers -gt $effectiveViewers) { $Workers = $effectiveViewers }
+
 Write-Host "================================================================================" -ForegroundColor Cyan
 Write-Host " ROSH Control Tower: Combined Load Test & Video Quality Orchestrator" -ForegroundColor Cyan
 Write-Host "================================================================================" -ForegroundColor Cyan
-Write-Host " Vehicles / Users : $Count"
-Write-Host " Duration         : $DurationSeconds seconds ($([math]::Round($DurationSeconds / 60, 1)) minutes)"
-Write-Host " Playwright Workers: $Workers"
-Write-Host " Working Directory: $repoRoot"
+Write-Host " Vehicles Spawned          : $Count bots"
+Write-Host " Video Ingest Streams      : $effectiveStreams bots streaming RTSP ($($Count - $effectiveStreams) telemetry-only)"
+Write-Host " Active WebRTC Viewers     : $effectiveViewers streams measured concurrently"
+Write-Host " Duration                  : $DurationSeconds seconds ($([math]::Round($DurationSeconds / 60, 1)) minutes)"
+Write-Host " Playwright Workers        : $Workers"
+Write-Host " Working Directory         : $repoRoot"
 Write-Host ""
 
 # ------------------------------------------------------------------------------
@@ -153,7 +164,8 @@ if (Test-Path $logFile) { Remove-Item $logFile -Force -ErrorAction SilentlyConti
 if (Test-Path $errFile) { Remove-Item $errFile -Force -ErrorAction SilentlyContinue }
 if (Test-Path $stopFile) { Remove-Item $stopFile -Force -ErrorAction SilentlyContinue }
 
-$loadTestArgs = "tools/load-test/run-load-test.mjs --count $Count --duration $harnessDuration --video"
+$videoArg = if ($effectiveStreams -lt $Count) { "--video --video-count $effectiveStreams" } else { "--video" }
+$loadTestArgs = "tools/load-test/run-load-test.mjs --count $Count $videoArg --duration $harnessDuration"
 
 $loadTestProc = Start-Process -FilePath $nodeExe `
   -ArgumentList $loadTestArgs `
@@ -165,7 +177,7 @@ $loadTestProc = Start-Process -FilePath $nodeExe `
 $playwrightExitCode = 1
 
 try {
-  Write-Host "Waiting for all $Count bot video streams to report STREAMING..." -ForegroundColor Cyan
+  Write-Host "Waiting for $effectiveStreams bot video streams to report STREAMING..." -ForegroundColor Cyan
 
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
   $isReady = $false
@@ -195,22 +207,29 @@ try {
   }
 
   Write-Host ""
-  Write-Host ">>> All $Count streams are active on MediaMTX! <<<" -ForegroundColor Green
+  Write-Host ">>> All $effectiveStreams video streams are active on MediaMTX! <<<" -ForegroundColor Green
   Write-Host ""
 
   # ----------------------------------------------------------------------------
   # 5. Launch Playwright WebRTC Quality Test
   # ----------------------------------------------------------------------------
   Write-Host "--- Step 2: Launching Playwright WebRTC Quality Measurement ---" -ForegroundColor Yellow
-  Write-Host "Measuring $Count streams concurrently for $DurationSeconds s with $Workers workers..."
+  Write-Host "Measuring $effectiveViewers streams concurrently for $DurationSeconds s with $Workers workers..."
   Write-Host ""
+
+  # Clean stale WebRTC test results so previous runs do not pollute this report
+  $testResultsDir = Join-Path $repoRoot 'video-quality\test-results'
+  if (Test-Path $testResultsDir) {
+    Remove-Item $testResultsDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
 
   $env:TEST_BOT_COUNT = "$Count"
   $env:TEST_DURATION = "$DurationSeconds"
   $env:TEST_VINS = "$vinsCsv"
 
+  $measuredVins = $vins | Select-Object -First $effectiveViewers
   $projectArgs = @()
-  foreach ($v in $vins) {
+  foreach ($v in $measuredVins) {
     $projectArgs += '--project'
     $projectArgs += "chromium-$($v.ToLower())"
   }

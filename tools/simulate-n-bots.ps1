@@ -15,7 +15,8 @@
 # If execution policy blocks it:
 #   powershell -ExecutionPolicy Bypass -File tools\simulate-n-bots.ps1 -Count 5
 param(
-  [string]$Count = ''
+  [string]$Count = '',
+  [int]$StartOffset = 1
 )
 
 $ErrorActionPreference = 'Stop'
@@ -27,8 +28,9 @@ if (-not $Count -or [int]$Count -lt 1) {
   Write-Error "count must be a positive integer, got '$($args[0])'"
   exit 1
 }
-if ([int]$Count -gt 99) {
-  Write-Error 'count > 99 not supported (VIN scheme is TEST-VIN-0NN)'
+$maxVin = $StartOffset + [int]$Count - 1
+if ($maxVin -gt 99) {
+  Write-Error "max VIN index $maxVin > 99 not supported (VIN scheme is TEST-VIN-0NN)"
   exit 1
 }
 
@@ -49,7 +51,7 @@ if (-not (Test-Path $npxCli)) { Write-Error "npx-cli.js not found at $npxCli"; e
 
 $procs = @()
 try {
-  for ($i = 1; $i -le [int]$Count; $i++) {
+  for ($i = $StartOffset; $i -le $maxVin; $i++) {
     $vin = 'TEST-VIN-{0:d3}' -f $i
     $mac = '00:11:22:33:44:{0:X2}' -f $i
     $video = if ($videos.Count -gt 0) { $videos | Get-Random } else { '' }
@@ -68,7 +70,7 @@ try {
     if ($env:BACKEND_HTTP_URL) { $psi.EnvironmentVariables['BACKEND_HTTP_URL'] = $env:BACKEND_HTTP_URL }
     if ($env:NODE_TLS_REJECT_UNAUTHORIZED) { $psi.EnvironmentVariables['NODE_TLS_REJECT_UNAUTHORIZED'] = $env:NODE_TLS_REJECT_UNAUTHORIZED }
 
-    Write-Host "starting bot $i/$Count`: $vin ($mac)$(if ($video) { " video=$video" })"
+    Write-Host "starting bot $vin ($mac)$(if ($video) { " video=$video" })"
     $procs += [System.Diagnostics.Process]::Start($psi)
   }
 

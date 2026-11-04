@@ -106,6 +106,7 @@ function parseArgs(argv) {
     count: activeEnv.TEST_BOT_COUNT ? Number(activeEnv.TEST_BOT_COUNT) : 3,
     duration: activeEnv.TEST_DURATION ? Number(activeEnv.TEST_DURATION) : 60,
     video: false,
+    videoCount: activeEnv.TEST_VIDEO_COUNT ? Number(activeEnv.TEST_VIDEO_COUNT) : null,
     observeOnly: false,
     vins: activeEnv.TEST_VINS ? activeEnv.TEST_VINS.split(',').map((v) => v.trim()).filter(Boolean) : null,
     broker: activeEnv.MQTT_BROKER_URL || defaultBroker,
@@ -120,6 +121,11 @@ function parseArgs(argv) {
       case '--count': opts.count = Number(next()); break;
       case '--duration': opts.duration = Number(next()); break;
       case '--video': opts.video = true; break;
+      case '--video-count': {
+        opts.video = true;
+        opts.videoCount = Number(next());
+        break;
+      }
       case '--observe-only': opts.observeOnly = true; break;
       case '--vins': opts.vins = next().split(',').map((v) => v.trim()).filter(Boolean); break;
       case '--broker': opts.broker = next(); break;
@@ -266,9 +272,11 @@ function pickRandomVideos(count) {
 function spawnBots(opts, vins, macs, videos, buckets, stats) {
   const npxCli = resolveNpxCli();
   const procs = [];
+  const videoBotsCount = opts.video ? (opts.videoCount ?? vins.length) : 0;
   for (let i = 0; i < vins.length; i++) {
+    const isVideoBot = i < videoBotsCount;
     const videoCmdId = randomUUID();
-    if (opts.video && stats) {
+    if (isVideoBot && stats) {
       stats.videoCommands.set(vins[i], { action: 'start', commandId: videoCmdId });
     }
     const env = {
@@ -278,8 +286,8 @@ function spawnBots(opts, vins, macs, videos, buckets, stats) {
       RTSP_PUBLISH_BASE: opts.ingestBase,
       BOT_VIN: vins[i],
       BOT_MAC: macs[i],
-      ...(opts.video ? { BOT_AUTO_START_VIDEO: 'true', BOT_VIDEO_COMMAND_ID: videoCmdId } : {}),
-      ...(videos[i] ? { BOT_VIDEO: videos[i] } : {})
+      ...(isVideoBot ? { BOT_AUTO_START_VIDEO: 'true', BOT_VIDEO_COMMAND_ID: videoCmdId } : {}),
+      ...(isVideoBot && videos[i] ? { BOT_VIDEO: videos[i] } : {})
     };
     const child = spawn(process.execPath, [npxCli, 'tsx', 'tools/bot-simulator.ts'], {
       cwd: repoRoot,
@@ -611,18 +619,24 @@ function evaluate(opts, vins, macs, buckets, stats, registryMid, registryEnd, ru
     }
 
     // 5. Video (only in --video runs)
+    const videoBotsCount = opts.video ? (opts.videoCount ?? vins.length) : 0;
+    const isVideoBot = i < videoBotsCount;
     if (opts.video) {
-      const cmd = stats.videoCommands.get(vin);
-      if (!cmd) {
-        checks.video = { pass: false, error: 'no video/control START sent' };
+      if (!isVideoBot) {
+        checks.video = { pass: true, skipped: 'telemetry-only bot' };
       } else {
-        const seq = b.videoStatus.filter((s) => s.commandId === cmd.commandId).map((s) => stateName(s.state));
-        const started = seq.includes('starting');
-        const streaming = seq.includes('streaming');
-        const crossTalk = b.videoStatus.some((s) => s.commandId === cmd.commandId && false); // vin bucketed already; kept for clarity
-        checks.video = started && streaming && !crossTalk
-          ? { pass: true, commandId: cmd.commandId, statusSequence: seq }
-          : { pass: false, commandId: cmd.commandId, statusSequence: seq, error: `expected starting→streaming, got [${seq.join('→')}]` };
+        const cmd = stats.videoCommands.get(vin);
+        if (!cmd) {
+          checks.video = { pass: false, error: 'no video/control START sent' };
+        } else {
+          const seq = b.videoStatus.filter((s) => s.commandId === cmd.commandId).map((s) => stateName(s.state));
+          const started = seq.includes('starting');
+          const streaming = seq.includes('streaming');
+          const crossTalk = b.videoStatus.some((s) => s.commandId === cmd.commandId && false); // vin bucketed already; kept for clarity
+          checks.video = started && streaming && !crossTalk
+            ? { pass: true, commandId: cmd.commandId, statusSequence: seq }
+            : { pass: false, commandId: cmd.commandId, statusSequence: seq, error: `expected starting→streaming, got [${seq.join('→')}]` };
+        }
       }
     } else {
       checks.video = { pass: true, skipped: 'not a --video run' };
@@ -865,9 +879,11 @@ async function main() {
       console.log(`registry mid-run: ${activeExpected.length}/${vins.length} expected VINs active`);
     }
 
-    // 4. Video: START every bot's stream, wait for streaming
+    // 4. Video: START bot streams, wait for streaming
     if (opts.video) {
-      for (const vin of vins) {
+      const videoBotsCount = opts.videoCount ?? vins.length;
+      const videoVins = vins.slice(0, videoBotsCount);
+      for (const vin of videoVins) {
         const b = buckets.get(vin);
         const sessionId = b.sessionId ?? `sim-${vin}-${Date.now()}`;
         const existingCmd = stats.videoCommands.get(vin);
@@ -877,7 +893,7 @@ async function main() {
         try { await publishVideo(observer, vin, command); } catch { /* ignore anonymous ACL drop */ }
       }
       const vidDeadline = Date.now() + 20_000;
-      for (const vin of vins) {
+      for (const vin of videoVins) {
         const cmd = stats.videoCommands.get(vin);
         if (!cmd) continue;
         while (Date.now() < vidDeadline) {
@@ -886,11 +902,12 @@ async function main() {
           await sleep(300);
         }
       }
-      const streaming = vins.filter((vin) => {
+      const streaming = videoVins.filter((vin) => {
         const cmd = stats.videoCommands.get(vin);
         return cmd && buckets.get(vin).videoStatus.some((s) => s.commandId === cmd.commandId && s.state === VideoState.VIDEO_STATE_STREAMING);
       });
-      console.log(`STREAMS READY: ${streaming.length}/${vins.length} streaming (Playwright can run now)`);
+      const extraMsg = videoVins.length < vins.length ? ` (${vins.length - videoVins.length} telemetry-only bots)` : '';
+      console.log(`STREAMS READY: ${streaming.length}/${videoVins.length} streaming${extraMsg} (Playwright can run now)`);
     }
 
     // 5. Measurement window
@@ -899,7 +916,9 @@ async function main() {
   } finally {
     // 6. Teardown: STOP video, stop bots, verify clean session-end
     if (opts.video) {
-      for (const vin of vins) {
+      const videoBotsCount = opts.videoCount ?? vins.length;
+      const videoVins = vins.slice(0, videoBotsCount);
+      for (const vin of videoVins) {
         const cmd = stats.videoCommands.get(vin);
         if (!cmd) continue;
         try {
