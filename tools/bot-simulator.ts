@@ -270,6 +270,10 @@ function publishVideoStatus(
 function stopFfmpeg(reportStopped: boolean): void {
   clearTimeout(ffmpegStreamingTimer);
   clearTimeout(ffmpegKillTimer);
+  if (process.env.BOT_EXTERNAL_VIDEO === 'true') {
+    if (reportStopped) publishVideoStatus('stopped', lastVideoCommandId);
+    return;
+  }
   const proc = ffmpegProc;
   ffmpegProc = null;
   if (!proc || proc.killed || proc.exitCode !== null) return;
@@ -286,6 +290,12 @@ function stopFfmpeg(reportStopped: boolean): void {
 function startFfmpeg(command: { commandId: string; ingestUrl?: string }): void {
   stopFfmpeg(false);
   lastVideoCommandId = command.commandId;
+
+  if (process.env.BOT_EXTERNAL_VIDEO === 'true') {
+    console.log(`[bot-sim] external video stream active for ${vin}`);
+    publishVideoStatus('streaming', command.commandId);
+    return;
+  }
 
   if (!mockVideo) {
     publishVideoStatus(
@@ -469,8 +479,10 @@ client.on('connect', () => {
 
   publishHandshake(client);
 
-  // If requested by the load-test harness, auto-start video streaming immediately
-  if (process.env.BOT_AUTO_START_VIDEO === 'true') {
+  // If external video is active or load-test requested auto-start, publish streaming
+  if (process.env.BOT_EXTERNAL_VIDEO === 'true') {
+    publishVideoStatus('streaming', process.env.BOT_VIDEO_COMMAND_ID ?? 'auto-start');
+  } else if (process.env.BOT_AUTO_START_VIDEO === 'true') {
     startFfmpeg({ commandId: process.env.BOT_VIDEO_COMMAND_ID ?? 'auto-start' });
   }
 

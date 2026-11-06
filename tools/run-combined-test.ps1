@@ -18,7 +18,8 @@ param(
   [int]$DurationSeconds = 600,
   [int]$Workers = 10,
   [int]$Viewers = 0,
-  [switch]$SkipPreflight = $false
+  [switch]$SkipPreflight = $false,
+  [switch]$ObserveOnly = $false
 )
 
 $ErrorActionPreference = 'Stop'
@@ -164,8 +165,12 @@ if (Test-Path $logFile) { Remove-Item $logFile -Force -ErrorAction SilentlyConti
 if (Test-Path $errFile) { Remove-Item $errFile -Force -ErrorAction SilentlyContinue }
 if (Test-Path $stopFile) { Remove-Item $stopFile -Force -ErrorAction SilentlyContinue }
 
-$videoArg = if ($effectiveStreams -lt $Count) { "--video --video-count $effectiveStreams" } else { "--video" }
-$loadTestArgs = "tools/load-test/run-load-test.mjs --count $Count $videoArg --duration $harnessDuration"
+$loadTestArgs = if ($ObserveOnly) {
+  "tools/load-test/run-load-test.mjs --observe-only --vins $vinsCsv --duration $harnessDuration"
+} else {
+  $videoArg = if ($effectiveStreams -lt $Count) { "--video --video-count $effectiveStreams" } else { "--video" }
+  "tools/load-test/run-load-test.mjs --count $Count $videoArg --duration $harnessDuration"
+}
 
 $loadTestProc = Start-Process -FilePath $nodeExe `
   -ArgumentList $loadTestArgs `
@@ -177,27 +182,33 @@ $loadTestProc = Start-Process -FilePath $nodeExe `
 $playwrightExitCode = 1
 
 try {
-  Write-Host "Waiting for $effectiveStreams bot video streams to report STREAMING..." -ForegroundColor Cyan
-
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
   $isReady = $false
 
-  while ($sw.Elapsed.TotalSeconds -lt 180 -and -not $loadTestProc.HasExited) {
-    if (Test-Path $logFile) {
-      $raw = Get-Content -Path $logFile -Raw -ErrorAction SilentlyContinue
-      if ($raw) {
-        if ($raw -match 'STREAMS READY:\s*(\d+)/(\d+)\s*streaming') {
-          $isReady = $true
-          Write-Host "[load-test] $matches[0]"
-          break
-        }
-        $latest = ($raw -split "`r?`n" | Where-Object { $_ -match 'spawned|connected|handshake|streaming' } | Select-Object -Last 1)
-        if ($latest) {
-          Write-Host "[status: $([math]::Round($sw.Elapsed.TotalSeconds))s] $latest"
+  if ($ObserveOnly) {
+    Write-Host "Observing $effectiveStreams external bot video streams (already active)..." -ForegroundColor Cyan
+    Start-Sleep -Seconds 3
+    $isReady = $true
+  } else {
+    Write-Host "Waiting for $effectiveStreams bot video streams to report STREAMING..." -ForegroundColor Cyan
+
+    while ($sw.Elapsed.TotalSeconds -lt 180 -and -not $loadTestProc.HasExited) {
+      if (Test-Path $logFile) {
+        $raw = Get-Content -Path $logFile -Raw -ErrorAction SilentlyContinue
+        if ($raw) {
+          if ($raw -match 'STREAMS READY:\s*(\d+)/(\d+)\s*streaming') {
+            $isReady = $true
+            Write-Host "[load-test] $matches[0]"
+            break
+          }
+          $latest = ($raw -split "`r?`n" | Where-Object { $_ -match 'spawned|connected|handshake|streaming' } | Select-Object -Last 1)
+          if ($latest) {
+            Write-Host "[status: $([math]::Round($sw.Elapsed.TotalSeconds))s] $latest"
+          }
         }
       }
+      Start-Sleep -Seconds 1
     }
-    Start-Sleep -Seconds 1
   }
 
   if (-not $isReady) {

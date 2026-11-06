@@ -21,6 +21,31 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-Location (Resolve-Path "$PSScriptRoot\..").Path
+$repoRoot = (Get-Location).Path
+
+# 1. Load connection defaults from .env.loadtest if present
+$envFile = Join-Path $repoRoot '.env.loadtest'
+if (Test-Path $envFile) {
+  Get-Content $envFile | ForEach-Object {
+    $line = $_.Trim()
+    if ($line -and -not $line.StartsWith('#')) {
+      $idx = $line.IndexOf('=')
+      if ($idx -gt 0) {
+        $k = $line.Substring(0, $idx).Trim()
+        $v = $line.Substring($idx + 1).Trim().Trim('"').Trim("'")
+        if ($v -and -not [System.Environment]::GetEnvironmentVariable($k)) {
+          [System.Environment]::SetEnvironmentVariable($k, $v)
+        }
+      }
+    }
+  }
+}
+
+# Auto-derive endpoints
+$tailnetHost = $env:TAILNET_HOST
+$brokerUrl  = if ($env:MQTT_BROKER_URL)  { $env:MQTT_BROKER_URL }  elseif ($tailnetHost) { "wss://$tailnetHost/mqtt" } else { "mqtt://localhost:1883" }
+$backendUrl = if ($env:BACKEND_HTTP_URL) { $env:BACKEND_HTTP_URL } elseif ($tailnetHost) { "https://$tailnetHost" }   else { "http://localhost:3000" }
+$rtspBase   = if ($env:RTSP_PUBLISH_BASE){ $env:RTSP_PUBLISH_BASE }elseif ($tailnetHost) { "rtsp://$tailnetHost:8554" }else { "rtsp://localhost:8554" }
 
 if (-not $Count) { $Count = Read-Host 'count' }
 $Count = $Count.Trim() -replace '[^\d]', ''
@@ -63,11 +88,11 @@ try {
     $psi.UseShellExecute = $false
     $psi.EnvironmentVariables['BOT_VIN'] = $vin
     $psi.EnvironmentVariables['BOT_MAC'] = $mac
+    $psi.EnvironmentVariables['MQTT_BROKER_URL'] = $brokerUrl
+    $psi.EnvironmentVariables['BACKEND_HTTP_URL'] = $backendUrl
+    $psi.EnvironmentVariables['RTSP_PUBLISH_BASE'] = $rtspBase
+    $psi.EnvironmentVariables['BOT_AUTO_START_VIDEO'] = if ($env:BOT_AUTO_START_VIDEO) { $env:BOT_AUTO_START_VIDEO } else { 'true' }
     if ($video) { $psi.EnvironmentVariables['BOT_VIDEO'] = $video }
-    if ($env:BOT_AUTO_START_VIDEO) { $psi.EnvironmentVariables['BOT_AUTO_START_VIDEO'] = $env:BOT_AUTO_START_VIDEO }
-    if ($env:RTSP_PUBLISH_BASE) { $psi.EnvironmentVariables['RTSP_PUBLISH_BASE'] = $env:RTSP_PUBLISH_BASE }
-    if ($env:MQTT_BROKER_URL) { $psi.EnvironmentVariables['MQTT_BROKER_URL'] = $env:MQTT_BROKER_URL }
-    if ($env:BACKEND_HTTP_URL) { $psi.EnvironmentVariables['BACKEND_HTTP_URL'] = $env:BACKEND_HTTP_URL }
     if ($env:NODE_TLS_REJECT_UNAUTHORIZED) { $psi.EnvironmentVariables['NODE_TLS_REJECT_UNAUTHORIZED'] = $env:NODE_TLS_REJECT_UNAUTHORIZED }
 
     Write-Host "starting bot $vin ($mac)$(if ($video) { " video=$video" })"

@@ -11,10 +11,12 @@
  * Output: quality-report.html
  */
 import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const RESULTS_DIR = 'test-results';
-const OUTPUT_FILE = 'quality-report.html';
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const RESULTS_DIR = join(scriptDir, 'test-results');
+const OUTPUT_FILE = join(scriptDir, 'quality-report.html');
 
 // ---------------------------------------------------------------------------
 // 1. Load result files
